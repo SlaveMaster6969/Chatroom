@@ -5,7 +5,7 @@
 <title>Pip-Boy 3000 Mk IV – MQTT Chat</title>
 <style>
 :root {
-    /* Adjust these to perfectly align the green screen with your monitorborder image */
+    /* TUNE THESE to line the green screen up with your monitorborder image */
     --screen-left: 120px;
     --screen-top: 70px;
     --screen-width: 720px;
@@ -116,6 +116,13 @@ body {
     100% { top: 100%; }
 }
 
+/* Glow pulse for selected elements */
+@keyframes glowPulse {
+    0% { box-shadow: 0 0 4px #00ff66; }
+    50% { box-shadow: 0 0 10px #00ff66; }
+    100% { box-shadow: 0 0 4px #00ff66; }
+}
+
 /* Startup screen */
 #startup-screen {
     position: absolute;
@@ -159,11 +166,17 @@ body {
     padding: 2px 8px;
     border: 1px solid #00ff66;
     cursor: pointer;
+    transition: background 0.15s, color 0.15s, transform 0.1s;
+}
+
+.pip-tab:hover {
+    transform: translateY(-1px);
 }
 
 .pip-tab.active {
     background: #00ff66;
     color: #001900;
+    animation: glowPulse 1.2s infinite;
 }
 
 /* Content layout */
@@ -194,6 +207,7 @@ body {
 .left-menu-item {
     padding: 2px 2px;
     cursor: pointer;
+    transition: background 0.15s, color 0.15s;
 }
 
 .left-menu-item.selected {
@@ -245,6 +259,11 @@ body {
     align-items: center;
     justify-content: center;
     font-size: 10px;
+}
+
+#stat-limbs {
+    font-size: 10px;
+    margin-top: 4px;
 }
 
 #stat-bars {
@@ -301,11 +320,22 @@ body {
 
 .inv-item {
     padding: 1px 2px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
 }
 
 .inv-item.selected {
     background: #00ff66;
     color: #001900;
+}
+
+/* Item description */
+#inv-description {
+    margin-top: 4px;
+    border: 1px solid #00ff66;
+    padding: 2px;
+    box-sizing: border-box;
+    min-height: 40px;
 }
 
 /* Data / quests */
@@ -338,31 +368,72 @@ body {
     background: #001500;
 }
 
-/* Terminal (RADIO) */
-#terminal-panel {
-    font-size: 12px;
-}
-
-#terminal-output {
+/* RADIO panel */
+#radio-stations {
     flex: 1;
     border: 1px solid #00ff66;
     padding: 2px;
     box-sizing: border-box;
     overflow-y: auto;
-    white-space: pre-wrap;
 }
 
-#card-list {
-    margin-top: 2px;
-}
-
-.card-item {
+.radio-station {
     padding: 1px 2px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
 }
 
-.card-item.selected {
+.radio-station.selected {
     background: #00ff66;
     color: #001900;
+}
+
+#radio-info {
+    margin-top: 4px;
+    border: 1px solid #00ff66;
+    padding: 2px;
+    box-sizing: border-box;
+    min-height: 40px;
+}
+
+/* Terminal card overlay (full-screen inside Pip-Boy) */
+#terminal-card-ui {
+    position: absolute;
+    inset: 0;
+    background: #001900;
+    display: none;
+    padding: 10px;
+    box-sizing: border-box;
+    text-align: center;
+}
+
+#terminal-card-title {
+    font-size: 14px;
+    margin-bottom: 6px;
+}
+
+#terminal-card-list {
+    margin-top: 10px;
+    display: inline-block;
+    text-align: left;
+}
+
+.terminal-card-item {
+    padding: 2px 4px;
+    border: 1px solid #00ff66;
+    margin-bottom: 4px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, transform 0.1s;
+}
+
+.terminal-card-item:hover {
+    transform: translateX(2px);
+}
+
+.terminal-card-item.selected {
+    background: #00ff66;
+    color: #001900;
+    animation: glowPulse 1.2s infinite;
 }
 
 /* Chatroom panel */
@@ -381,6 +452,7 @@ body {
     border: 1px solid #00ff66;
     cursor: pointer;
     font-size: 11px;
+    transition: background 0.15s, color 0.15s;
 }
 
 .chat-tab.active {
@@ -513,6 +585,18 @@ NO HOLOTAPE FOUND
 LOAD ROM(1): DEITRIX 303
             </div>
 
+            <!-- TERMINAL CARD OVERLAY -->
+            <div id="terminal-card-ui">
+                <div id="terminal-card-title">ROBCO INDUSTRIES (TM) TERMLINK</div>
+                <div>SELECT A CARD</div>
+                <div id="terminal-card-list">
+                    <div class="terminal-card-item selected" data-card="chatroom">TERMINAL CHATROOM</div>
+                </div>
+                <div style="margin-top:8px;font-size:11px;">
+                    Use ↑/↓ to select, ENTER or click to load.
+                </div>
+            </div>
+
             <!-- MAIN UI -->
             <div id="main-ui">
                 <div id="top-bar">
@@ -555,6 +639,14 @@ LOAD ROM(1): DEITRIX 303
                                         AP: <span id="stat-ap">100</span>/100<br>
                                         RAD: <span id="stat-rad">0</span>
                                     </div>
+                                    <div id="stat-limbs">
+                                        HEAD: OK<br>
+                                        TORSO: OK<br>
+                                        L ARM: OK<br>
+                                        R ARM: OK<br>
+                                        L LEG: OK<br>
+                                        R LEG: OK
+                                    </div>
                                 </div>
                                 <div id="stat-bars">
                                     <div class="stat-bar">
@@ -585,16 +677,11 @@ LOAD ROM(1): DEITRIX 303
                         <!-- INV PANEL -->
                         <div class="panel" data-panel="inv">
                             <div class="section-header">INVENTORY</div>
-                            <div class="section-subheader">ALL ITEMS</div>
+                            <div class="section-subheader" id="inv-category-label">ALL</div>
                             <div id="inv-list">
-                                <div class="inv-item selected">10mm Pistol (DAM 18)</div>
-                                <div class="inv-item">Security Baton (DAM 12)</div>
-                                <div class="inv-item">Stimpak (5)</div>
-                                <div class="inv-item">RadAway (2)</div>
-                                <div class="inv-item">Fancy Lads Snack Cakes</div>
-                                <div class="inv-item">Nuka-Cola</div>
-                                <div class="inv-item">Pip-Boy Diagnostic Holotape</div>
+                                <!-- Filled by JS -->
                             </div>
+                            <div id="inv-description"></div>
                         </div>
 
                         <!-- DATA PANEL -->
@@ -602,12 +689,12 @@ LOAD ROM(1): DEITRIX 303
                             <div class="section-header">DATA</div>
                             <div class="section-subheader">QUESTS</div>
                             <div id="data-list">
-                                <div class="data-item">Out of Time</div>
-                                <div class="data-item">Jewel of the Commonwealth</div>
-                                <div class="data-item">Unlikely Valentine</div>
-                                <div class="data-item">MQTT: Establish Connection</div>
-                                <div class="data-item">MQTT: Sync Friends</div>
-                                <div class="data-item">MQTT: Secure the Chatroom</div>
+                                <div class="data-item">Out of Time – Leave Vault 111.</div>
+                                <div class="data-item">Jewel of the Commonwealth – Find Nick Valentine.</div>
+                                <div class="data-item">Unlikely Valentine – Rescue Nick from Park Street Station.</div>
+                                <div class="data-item">MQTT: Establish Connection – Connect to the Pip-Boy network.</div>
+                                <div class="data-item">MQTT: Sync Friends – Exchange friend data with the network.</div>
+                                <div class="data-item">MQTT: Secure the Chatroom – Keep the wasteland chatter under control.</div>
                             </div>
                         </div>
 
@@ -626,28 +713,23 @@ LOAD ROM(1): DEITRIX 303
                             </div>
                         </div>
 
-                        <!-- RADIO PANEL (TERMINAL + CARD SELECT + CHATROOM) -->
+                        <!-- RADIO PANEL -->
                         <div class="panel" data-panel="radio" id="radio-panel">
-                            <div class="section-header">RADIO / TERMINAL</div>
-                            <div class="section-subheader">ROBCO INDUSTRIES (TM) TERMLINK PROTOCOL</div>
-                            <div id="terminal-panel" style="flex:1;display:flex;flex-direction:column;">
-                                <div id="terminal-output">
-WELCOME TO ROBCO INDUSTRIES (TM) TERMLINK
-SELECT A CARD:
-- CHATROOM
-                                </div>
-                                <div id="card-list">
-                                    <div class="card-item selected" data-card="chatroom">[CHATROOM]</div>
-                                </div>
-                                <div style="margin-top:4px;font-size:11px;">
-                                    Use ↑/↓ to select a card, ENTER to load. Chatroom integrates MQTT channels.
-                                </div>
+                            <div class="section-header">RADIO</div>
+                            <div class="section-subheader">AVAILABLE STATIONS</div>
+                            <div id="radio-stations">
+                                <div class="radio-station selected" data-station="diamond">Diamond City Radio</div>
+                                <div class="radio-station" data-station="classical">Classical Radio</div>
+                                <div class="radio-station" data-station="terminal">Terminal Tower</div>
+                            </div>
+                            <div id="radio-info">
+                                Diamond City Radio – The best (and only) tunes in the Commonwealth.
                             </div>
                         </div>
 
-                        <!-- CHATROOM PANEL (opened via card) -->
+                        <!-- CHATROOM PANEL (opened via Terminal card) -->
                         <div class="panel" data-panel="chat" id="chat-panel">
-                            <div class="section-header">CHATROOM</div>
+                            <div class="section-header">TERMINAL CHATROOM</div>
                             <div class="section-subheader">PIP-BOY NETWORK INTERFACE</div>
 
                             <div id="chat-tabs">
@@ -693,7 +775,7 @@ SELECT A CARD:
                                     <div style="margin-top:6px;font-size:11px;">
                                         Add friend: <code>/friend username</code><br>
                                         Direct message: <code>/dm username message...</code><br>
-                                        Admin commands (if you treat this client as admin):<br>
+                                        Admin commands (from a privileged client):<br>
                                         <code>]\aboutblank</code>, <code>]\kick username</code>, <code>]\kick everyone</code>, <code>]\service</code>, <code>]\reload</code>
                                     </div>
                                 </div>
@@ -720,6 +802,7 @@ SELECT A CARD:
     const startupScreen = document.getElementById('startup-screen');
     const mainUI = document.getElementById('main-ui');
     const mqttStatusEl = document.getElementById('mqtt-status');
+    const terminalCardUI = document.getElementById('terminal-card-ui');
 
     const IMG_MONITOR_ON = 'assets/monitorborder.png';
     const IMG_MONITOR_OFF = 'assets/monitorborder-off.png';
@@ -804,14 +887,23 @@ SELECT A CARD:
         radio: {
             title: 'RADIO',
             items: [
-                { id: 'radio-terminal', label: 'TERMINAL' },
-                { id: 'radio-chat', label: 'CHATROOM' }
+                { id: 'radio-stations', label: 'STATIONS' }
+            ]
+        },
+        chat: {
+            title: 'CHATROOM',
+            items: [
+                { id: 'chat-main', label: 'MAIN' },
+                { id: 'chat-users', label: 'USERS' },
+                { id: 'chat-friends', label: 'FRIENDS' },
+                { id: 'chat-requests', label: 'REQUESTS' },
+                { id: 'chat-settings', label: 'SETTINGS' }
             ]
         }
     };
 
     function updateLeftMenuForTab(tab) {
-        const cfg = leftMenuConfig[tab];
+        const cfg = leftMenuConfig[tab] || leftMenuConfig['stat'];
         leftMenuTitle.textContent = cfg.title;
         leftMenu.innerHTML = '<div class="left-menu-section-title" id="left-menu-title">' + cfg.title + '</div>';
         cfg.items.forEach((item, idx) => {
@@ -840,15 +932,15 @@ SELECT A CARD:
 
     function handleLeftMenuAction(tab, menuId) {
         if (tab === 'radio') {
-            if (menuId === 'radio-terminal') {
-                // show RADIO panel (terminal)
-                showPanel('radio');
-            } else if (menuId === 'radio-chat') {
-                // show CHATROOM panel
-                showPanel('chat');
-            }
+            showPanel('radio');
+        } else if (tab === 'chat') {
+            showPanel('chat');
+            if (menuId === 'chat-main') setChatTabByIndex(0);
+            else if (menuId === 'chat-users') setChatTabByIndex(1);
+            else if (menuId === 'chat-friends') setChatTabByIndex(2);
+            else if (menuId === 'chat-requests') setChatTabByIndex(3);
+            else if (menuId === 'chat-settings') setChatTabByIndex(4);
         } else {
-            // other tabs: we keep single panel per tab for now
             showPanel(tab);
         }
     }
@@ -857,29 +949,224 @@ SELECT A CARD:
         panels.forEach(p => {
             p.classList.toggle('active', p.getAttribute('data-panel') === panelName);
         });
-        // also update top tab highlight
         pipTabs.forEach(t => {
             t.classList.toggle('active', t.getAttribute('data-tab') === panelName);
         });
+        if (panelName === 'chat') {
+            updateLeftMenuForTab('chat');
+        }
     }
 
     // Initialize left menu for STAT
     updateLeftMenuForTab('stat');
 
-    // ---------- TERMINAL CARD SELECTION ----------
-    const cardItems = document.querySelectorAll('.card-item');
-    let cardIndex = 0;
-    function updateCardSelection() {
-        cardItems.forEach((item, idx) => {
-            item.classList.toggle('selected', idx === cardIndex);
+    // ---------- INVENTORY DATA ----------
+    const invListEl = document.getElementById('inv-list');
+    const invDescEl = document.getElementById('inv-description');
+    const invCategoryLabel = document.getElementById('inv-category-label');
+
+    const inventoryData = {
+        weapons: [
+            {
+                name: '10mm Pistol',
+                category: 'WEAPONS',
+                desc: 'Standard issue sidearm. Reliable, accurate, and easy to maintain in the wasteland.',
+                stats: 'DAM 18 | Fire Rate 46 | Range 83 | ACC 60 | Weight 3.5 | Value 50'
+            },
+            {
+                name: 'Security Baton',
+                category: 'WEAPONS',
+                desc: 'Vault security baton. Non-lethal in theory, less so in practice.',
+                stats: 'DAM 12 | Speed Medium | Weight 2.0 | Value 15'
+            },
+            {
+                name: 'Laser Musket',
+                category: 'WEAPONS',
+                desc: 'Crank-powered laser rifle favored by the Minutemen.',
+                stats: 'DAM 30 | Fire Rate 6 | Range 71 | ACC 69 | Weight 7.0 | Value 75'
+            }
+        ],
+        aid: [
+            {
+                name: 'Stimpak',
+                category: 'AID',
+                desc: 'Restores a large amount of health over time. Vault-Tec approved.',
+                stats: 'Heals 30% HP | Weight 0.1 | Value 50'
+            },
+            {
+                name: 'RadAway',
+                category: 'AID',
+                desc: 'Chemically flushes radiation from the bloodstream.',
+                stats: '-150 RADS | Weight 0.1 | Value 80'
+            },
+            {
+                name: 'Nuka-Cola',
+                category: 'AID',
+                desc: 'Ice-cold, mildly radioactive soft drink.',
+                stats: '+10 HP | +5 AP | +5 RADS | Weight 0.5 | Value 20'
+            }
+        ],
+        misc: [
+            {
+                name: 'Pip-Boy Diagnostic Holotape',
+                category: 'MISC',
+                desc: 'Holotape used to test Pip-Boy subsystems.',
+                stats: 'Weight 0 | Value 0'
+            }
+            // Terminal item will be added dynamically
+        ]
+    };
+
+    function buildInventoryList(filter) {
+        invListEl.innerHTML = '';
+        let items = [];
+        if (!filter || filter === 'ALL') {
+            items = [
+                ...inventoryData.weapons,
+                ...inventoryData.aid,
+                ...inventoryData.misc
+            ];
+        } else if (filter === 'WEAPONS') {
+            items = inventoryData.weapons;
+        } else if (filter === 'AID') {
+            items = inventoryData.aid;
+        } else if (filter === 'MISC') {
+            items = inventoryData.misc;
+        }
+        items.forEach((item, idx) => {
+            const div = document.createElement('div');
+            div.className = 'inv-item' + (idx === 0 ? ' selected' : '');
+            div.dataset.name = item.name;
+            div.dataset.category = item.category;
+            div.textContent = item.name;
+            invListEl.appendChild(div);
+        });
+        updateInvSelection();
+        showInvDescriptionForSelected();
+        const invItems = invListEl.querySelectorAll('.inv-item');
+        invItems.forEach((item, idx) => {
+            item.addEventListener('click', () => {
+                invSelectedIndex = idx;
+                updateInvSelection();
+                showInvDescriptionForSelected();
+                if (item.dataset.name === 'Terminal') {
+                    openTerminalCardUI();
+                }
+            });
         });
     }
-    function openSelectedCard() {
-        const card = cardItems[cardIndex].getAttribute('data-card');
-        if (card === 'chatroom') {
-            showPanel('chat');
+
+    let invSelectedIndex = 0;
+    function updateInvSelection() {
+        const invItems = invListEl.querySelectorAll('.inv-item');
+        invItems.forEach((it, idx) => {
+            it.classList.toggle('selected', idx === invSelectedIndex);
+        });
+    }
+
+    function showInvDescriptionForSelected() {
+        const invItems = invListEl.querySelectorAll('.inv-item');
+        const itemEl = invItems[invSelectedIndex];
+        if (!itemEl) {
+            invDescEl.textContent = '';
+            return;
+        }
+        const name = itemEl.dataset.name;
+        const category = itemEl.dataset.category;
+        const all = [
+            ...inventoryData.weapons,
+            ...inventoryData.aid,
+            ...inventoryData.misc
+        ];
+        const item = all.find(i => i.name === name && i.category === category);
+        if (!item) {
+            invDescEl.textContent = '';
+            return;
+        }
+        invDescEl.textContent = item.name + '\n' + item.desc + '\n' + item.stats;
+    }
+
+    // Initial inventory build
+    buildInventoryList('ALL');
+
+    // ---------- RADIO STATIONS ----------
+    const radioStationsEl = document.getElementById('radio-stations');
+    const radioInfoEl = document.getElementById('radio-info');
+    const radioStations = radioStationsEl.querySelectorAll('.radio-station');
+    let radioSelectedIndex = 0;
+    let terminalItemUnlocked = false;
+
+    function updateRadioSelection() {
+        radioStations.forEach((st, idx) => {
+            st.classList.toggle('selected', idx === radioSelectedIndex);
+        });
+        const st = radioStations[radioSelectedIndex];
+        if (!st) return;
+        const id = st.dataset.station;
+        if (id === 'diamond') {
+            radioInfoEl.textContent = 'Diamond City Radio – The best (and only) tunes in the Commonwealth.';
+        } else if (id === 'classical') {
+            radioInfoEl.textContent = 'Classical Radio – Pre-war symphonies echoing through the ruins.';
+        } else if (id === 'terminal') {
+            radioInfoEl.textContent = 'Terminal Tower – Encrypted broadcast detected. Receiving data...';
+            unlockTerminalItem();
         }
     }
+
+    radioStations.forEach((st, idx) => {
+        st.addEventListener('click', () => {
+            radioSelectedIndex = idx;
+            updateRadioSelection();
+        });
+    });
+
+    function unlockTerminalItem() {
+        if (terminalItemUnlocked) return;
+        terminalItemUnlocked = true;
+        const terminalItem = {
+            name: 'Terminal',
+            category: 'MISC',
+            desc: 'Portable access key to the Terminal Chatroom network.',
+            stats: 'Weight 0 | Value 0'
+        };
+        inventoryData.misc.push(terminalItem);
+        radioInfoEl.textContent += '\nNew item added to MISC: Terminal.';
+    }
+
+    updateRadioSelection();
+
+    // ---------- TERMINAL CARD UI ----------
+    const terminalCardItems = document.querySelectorAll('.terminal-card-item');
+    let terminalCardIndex = 0;
+
+    function updateTerminalCardSelection() {
+        terminalCardItems.forEach((item, idx) => {
+            item.classList.toggle('selected', idx === terminalCardIndex);
+        });
+    }
+
+    function openTerminalCardUI() {
+        mainUI.style.display = 'none';
+        terminalCardUI.style.display = 'block';
+        terminalCardIndex = 0;
+        updateTerminalCardSelection();
+    }
+
+    function closeTerminalCardUIToChat() {
+        terminalCardUI.style.display = 'none';
+        mainUI.style.display = 'block';
+        showPanel('chat');
+    }
+
+    terminalCardItems.forEach((item, idx) => {
+        item.addEventListener('click', () => {
+            terminalCardIndex = idx;
+            updateTerminalCardSelection();
+            if (item.dataset.card === 'chatroom') {
+                closeTerminalCardUIToChat();
+            }
+        });
+    });
 
     // ---------- CHATROOM TABS ----------
     const chatTabs = document.querySelectorAll('.chat-tab');
@@ -1100,12 +1387,6 @@ SELECT A CARD:
         if (to === username) {
             friendRequests.push({ from, to, raw: msg });
             renderFriendRequests();
-        } else {
-            // also listen for acceptance messages
-            const accMatch = msg.match(/Accepted u="([^"]+)"/);
-            if (accMatch) {
-                // acceptance is handled by friends topic anyway
-            }
         }
     }
 
@@ -1157,24 +1438,30 @@ SELECT A CARD:
 
     // ---------- KEYBOARD NAV ----------
     document.addEventListener('keydown', (e) => {
+        // Terminal card overlay active?
+        if (terminalCardUI.style.display === 'block') {
+            if (e.key === 'ArrowUp') {
+                terminalCardIndex = (terminalCardIndex - 1 + terminalCardItems.length) % terminalCardItems.length;
+                updateTerminalCardSelection();
+                e.preventDefault();
+            } else if (e.key === 'ArrowDown') {
+                terminalCardIndex = (terminalCardIndex + 1) % terminalCardItems.length;
+                updateTerminalCardSelection();
+                e.preventDefault();
+            } else if (e.key === 'Enter') {
+                const item = terminalCardItems[terminalCardIndex];
+                if (item.dataset.card === 'chatroom') {
+                    closeTerminalCardUIToChat();
+                }
+                e.preventDefault();
+            }
+            return;
+        }
+
         const activePanel = document.querySelector('.panel.active');
         const activePanelName = activePanel ? activePanel.getAttribute('data-panel') : '';
 
-        if (activePanelName === 'radio') {
-            // Terminal card selection
-            if (e.key === 'ArrowUp') {
-                cardIndex = (cardIndex - 1 + cardItems.length) % cardItems.length;
-                updateCardSelection();
-                e.preventDefault();
-            } else if (e.key === 'ArrowDown') {
-                cardIndex = (cardIndex + 1) % cardItems.length;
-                updateCardSelection();
-                e.preventDefault();
-            } else if (e.key === 'Enter') {
-                openSelectedCard();
-                e.preventDefault();
-            }
-        } else if (activePanelName === 'chat') {
+        if (activePanelName === 'chat') {
             // Chatroom tabs
             if (e.key === 'ArrowLeft') {
                 setChatTabByIndex((chatTabIndex - 1 + chatTabs.length) % chatTabs.length);
@@ -1205,6 +1492,37 @@ SELECT A CARD:
                         e.preventDefault();
                     }
                 }
+            }
+        } else if (activePanelName === 'inv') {
+            // Inventory navigation
+            const invItems = invListEl.querySelectorAll('.inv-item');
+            if (e.key === 'ArrowUp') {
+                invSelectedIndex = (invSelectedIndex - 1 + invItems.length) % invItems.length;
+                updateInvSelection();
+                showInvDescriptionForSelected();
+                e.preventDefault();
+            } else if (e.key === 'ArrowDown') {
+                invSelectedIndex = (invSelectedIndex + 1) % invItems.length;
+                updateInvSelection();
+                showInvDescriptionForSelected();
+                e.preventDefault();
+            } else if (e.key === 'Enter') {
+                const itemEl = invItems[invSelectedIndex];
+                if (itemEl && itemEl.dataset.name === 'Terminal') {
+                    openTerminalCardUI();
+                }
+                e.preventDefault();
+            }
+        } else if (activePanelName === 'radio') {
+            // Radio navigation
+            if (e.key === 'ArrowUp') {
+                radioSelectedIndex = (radioSelectedIndex - 1 + radioStations.length) % radioStations.length;
+                updateRadioSelection();
+                e.preventDefault();
+            } else if (e.key === 'ArrowDown') {
+                radioSelectedIndex = (radioSelectedIndex + 1) % radioStations.length;
+                updateRadioSelection();
+                e.preventDefault();
             }
         } else {
             // Left menu navigation
