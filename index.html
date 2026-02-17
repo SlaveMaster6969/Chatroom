@@ -2,349 +2,506 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Pipboy MQTT Chatroom</title>
+<title>Pip-Boy 3000 Mk IV – MQTT Chat</title>
 <style>
-    html, body {
-        margin: 0;
-        padding: 0;
-        background: #000;
-        color: #00ff66;
-        font-family: "Courier New", monospace;
-        height: 100%;
-        overflow: hidden;
-    }
+:root {
+    /* Adjust these to perfectly align the green screen with your monitorborder image */
+    --screen-left: 120px;
+    --screen-top: 70px;
+    --screen-width: 720px;
+    --screen-height: 420px;
+}
 
-    body {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
+html, body {
+    margin: 0;
+    padding: 0;
+    background: #000;
+    height: 100%;
+    overflow: hidden;
+    font-family: "Courier New", monospace;
+    color: #00ff66;
+}
 
-    #pipboy-shell {
-        position: relative;
-        width: 960px;
-        height: 540px;
-        background: #000;
-    }
+body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
 
-    /* Monitor border on/off */
-    #monitor-border {
-        position: absolute;
-        inset: 0;
-        background-size: cover;
-        background-position: center;
-        pointer-events: none;
-    }
+/* Outer shell sized to your monitor border image */
+#pipboy-shell {
+    position: relative;
+    width: 960px;
+    height: 540px;
+}
 
-    /* Screen area */
-    #screen {
-        position: absolute;
-        left: 80px;
-        top: 40px;
-        right: 80px;
-        bottom: 80px;
-        background: #001900;
-        overflow: hidden;
-        color: #00ff66;
-        text-shadow: 0 0 4px #00ff66;
-    }
+/* Monitor border image */
+#monitor-border {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    pointer-events: none;
+}
 
-    /* BG overlay on */
-    #screen-bg-on {
-        position: absolute;
-        inset: 0;
-        background-size: cover;
-        background-position: center;
-        opacity: 0.25;
-        pointer-events: none;
-        mix-blend-mode: screen;
-    }
+/* Power off overlay */
+#power-off-overlay {
+    position: absolute;
+    inset: 0;
+    background: #000;
+    display: none;
+}
 
-    /* Flicker effect */
-    @keyframes flicker {
-        0% { opacity: 0.9; }
-        5% { opacity: 0.7; }
-        10% { opacity: 0.95; }
-        15% { opacity: 0.6; }
-        20% { opacity: 0.9; }
-        25% { opacity: 0.8; }
-        30% { opacity: 0.95; }
-        35% { opacity: 0.7; }
-        40% { opacity: 0.9; }
-        100% { opacity: 0.9; }
-    }
+/* Screen area aligned inside the border */
+#screen {
+    position: absolute;
+    left: var(--screen-left);
+    top: var(--screen-top);
+    width: var(--screen-width);
+    height: var(--screen-height);
+    background: #001900;
+    overflow: hidden;
+    color: #00ff66;
+    text-shadow: 0 0 4px #00ff66;
+}
 
-    #screen-inner {
-        position: absolute;
-        inset: 10px;
-        border: 2px solid #00ff66;
-        padding: 8px;
-        box-sizing: border-box;
-        animation: flicker 1.5s infinite;
-    }
+/* BG overlay (scanlines texture) */
+#screen-bg-on {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    opacity: 0.25;
+    pointer-events: none;
+    mix-blend-mode: screen;
+}
 
-    .scanline {
-        position: absolute;
-        left: 0;
-        right: 0;
-        height: 2px;
-        background: linear-gradient(to bottom, rgba(0,255,102,0.3), transparent);
-        animation: scan 2s linear infinite;
-        pointer-events: none;
-    }
+/* Inner frame */
+#screen-inner {
+    position: absolute;
+    inset: 8px;
+    border: 2px solid #00ff66;
+    padding: 6px;
+    box-sizing: border-box;
+    animation: flicker 1.5s infinite;
+}
 
-    @keyframes scan {
-        0% { top: -2px; }
-        100% { top: 100%; }
-    }
+/* Flicker */
+@keyframes flicker {
+    0% { opacity: 0.9; }
+    5% { opacity: 0.7; }
+    10% { opacity: 0.95; }
+    15% { opacity: 0.6; }
+    20% { opacity: 0.9; }
+    25% { opacity: 0.8; }
+    30% { opacity: 0.95; }
+    35% { opacity: 0.7; }
+    40% { opacity: 0.9; }
+    100% { opacity: 0.9; }
+}
 
-    /* Startup screen */
-    #startup-screen {
-        position: absolute;
-        inset: 0;
-        padding: 20px;
-        box-sizing: border-box;
-        font-size: 16px;
-        line-height: 1.4;
-        white-space: pre;
-    }
+/* Scanline */
+.scanline {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(to bottom, rgba(0,255,102,0.3), transparent);
+    animation: scan 2s linear infinite;
+    pointer-events: none;
+}
 
-    /* Main UI layout */
-    #main-ui {
-        position: absolute;
-        inset: 0;
-        display: none;
-    }
+@keyframes scan {
+    0% { top: -2px; }
+    100% { top: 100%; }
+}
 
-    #top-bar {
-        display: flex;
-        justify-content: space-between;
-        font-size: 14px;
-        margin-bottom: 4px;
-    }
+/* Startup screen */
+#startup-screen {
+    position: absolute;
+    inset: 0;
+    padding: 10px;
+    box-sizing: border-box;
+    font-size: 14px;
+    line-height: 1.4;
+    white-space: pre;
+}
 
-    #top-bar .section-title {
-        font-weight: bold;
-        letter-spacing: 2px;
-    }
+/* Main UI */
+#main-ui {
+    position: absolute;
+    inset: 0;
+    display: none;
+}
 
-    #pip-tabs {
-        display: flex;
-        gap: 2px;
-        margin-bottom: 4px;
-        font-size: 13px;
-    }
+/* Top bar */
+#top-bar {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    margin-bottom: 4px;
+}
 
-    .pip-tab {
-        padding: 2px 6px;
-        border: 1px solid #00ff66;
-        cursor: pointer;
-    }
+#top-bar .section-title {
+    font-weight: bold;
+    letter-spacing: 2px;
+}
 
-    .pip-tab.active {
-        background: #00ff66;
-        color: #001900;
-    }
+/* Top tabs (STAT, INV, DATA, MAP, RADIO) */
+#pip-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 4px;
+    font-size: 12px;
+}
 
-    #content-area {
-        position: absolute;
-        left: 0;
-        right: 0;
-        top: 40px;
-        bottom: 0;
-        display: flex;
-    }
+.pip-tab {
+    padding: 2px 8px;
+    border: 1px solid #00ff66;
+    cursor: pointer;
+}
 
-    #left-menu {
-        width: 140px;
-        border-right: 1px solid #00ff66;
-        padding-right: 4px;
-        box-sizing: border-box;
-        font-size: 13px;
-    }
+.pip-tab.active {
+    background: #00ff66;
+    color: #001900;
+}
 
-    .left-menu-item {
-        padding: 2px 2px;
-        cursor: pointer;
-    }
+/* Content layout */
+#content-area {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 32px;
+    bottom: 0;
+    display: flex;
+}
 
-    .left-menu-item.selected {
-        background: #00ff66;
-        color: #001900;
-    }
+/* Left category column */
+#left-menu {
+    width: 140px;
+    border-right: 1px solid #00ff66;
+    padding-right: 4px;
+    box-sizing: border-box;
+    font-size: 12px;
+}
 
-    #main-panel {
-        flex: 1;
-        padding-left: 6px;
-        box-sizing: border-box;
-        font-size: 13px;
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-    }
+.left-menu-section-title {
+    font-size: 11px;
+    margin-bottom: 2px;
+    opacity: 0.8;
+}
 
-    .panel {
-        display: none;
-        flex: 1;
-        overflow: hidden;
-    }
+.left-menu-item {
+    padding: 2px 2px;
+    cursor: pointer;
+}
 
-    .panel.active {
-        display: flex;
-        flex-direction: column;
-    }
+.left-menu-item.selected {
+    background: #00ff66;
+    color: #001900;
+}
 
-    /* Chatroom panel */
-    #chat-tabs {
-        display: flex;
-        gap: 2px;
-        margin-bottom: 2px;
-    }
+/* Main panel */
+#main-panel {
+    flex: 1;
+    padding-left: 6px;
+    box-sizing: border-box;
+    font-size: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
 
-    .chat-tab {
-        padding: 1px 4px;
-        border: 1px solid #00ff66;
-        cursor: pointer;
-        font-size: 12px;
-    }
+.panel {
+    display: none;
+    flex: 1;
+    overflow: hidden;
+}
 
-    .chat-tab.active {
-        background: #00ff66;
-        color: #001900;
-    }
+.panel.active {
+    display: flex;
+    flex-direction: column;
+}
 
-    #chat-view {
-        flex: 1;
-        border: 1px solid #00ff66;
-        padding: 2px;
-        box-sizing: border-box;
-        overflow-y: auto;
-        white-space: pre-wrap;
-    }
+/* STAT panel layout */
+#stat-panel-top {
+    display: flex;
+    flex: 1;
+}
 
-    #chat-input-row {
-        display: flex;
-        margin-top: 2px;
-    }
+#stat-vaultboy {
+    width: 120px;
+    border-right: 1px solid #00ff66;
+    padding-right: 4px;
+    box-sizing: border-box;
+}
 
-    #chat-input {
-        flex: 1;
-        background: transparent;
-        border: 1px solid #00ff66;
-        color: #00ff66;
-        font-family: inherit;
-        font-size: 13px;
-        padding: 2px;
-        outline: none;
-    }
+#stat-vaultboy-box {
+    width: 100%;
+    height: 140px;
+    border: 1px solid #00ff66;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+}
 
-    #chat-send {
-        margin-left: 4px;
-        padding: 2px 8px;
-        border: 1px solid #00ff66;
-        background: transparent;
-        color: #00ff66;
-        cursor: pointer;
-        font-size: 13px;
-    }
+#stat-bars {
+    flex: 1;
+    padding-left: 6px;
+    box-sizing: border-box;
+}
 
-    /* Lists */
-    .list-view {
-        flex: 1;
-        border: 1px solid #00ff66;
-        padding: 2px;
-        box-sizing: border-box;
-        overflow-y: auto;
-    }
+.stat-bar {
+    margin-bottom: 4px;
+}
 
-    .list-item {
-        padding: 1px 2px;
-    }
+.stat-bar-label {
+    font-size: 11px;
+    margin-bottom: 1px;
+}
 
-    .list-item.selected {
-        background: #00ff66;
-        color: #001900;
-    }
+.stat-bar-track {
+    width: 100%;
+    height: 6px;
+    border: 1px solid #00ff66;
+    box-sizing: border-box;
+    position: relative;
+}
 
-    /* Settings */
-    #settings-form label {
-        display: block;
-        margin-bottom: 4px;
-    }
+.stat-bar-fill {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    background: #00ff66;
+}
 
-    #settings-form input {
-        background: transparent;
-        border: 1px solid #00ff66;
-        color: #00ff66;
-        font-family: inherit;
-        font-size: 13px;
-        padding: 2px;
-        outline: none;
-        width: 200px;
-    }
+/* INV / DATA / MAP / RADIO generic content */
+.section-header {
+    font-size: 12px;
+    margin-bottom: 2px;
+}
 
-    #settings-form button {
-        margin-top: 4px;
-        padding: 2px 8px;
-        border: 1px solid #00ff66;
-        background: transparent;
-        color: #00ff66;
-        cursor: pointer;
-        font-size: 13px;
-    }
+.section-subheader {
+    font-size: 11px;
+    opacity: 0.8;
+    margin-bottom: 4px;
+}
 
-    /* Terminal / card selection */
-    #terminal-panel {
-        font-size: 13px;
-    }
+/* Inventory list */
+#inv-list {
+    flex: 1;
+    border: 1px solid #00ff66;
+    padding: 2px;
+    box-sizing: border-box;
+    overflow-y: auto;
+}
 
-    #card-list {
-        margin-top: 2px;
-    }
+.inv-item {
+    padding: 1px 2px;
+}
 
-    .card-item {
-        padding: 1px 2px;
-    }
+.inv-item.selected {
+    background: #00ff66;
+    color: #001900;
+}
 
-    .card-item.selected {
-        background: #00ff66;
-        color: #001900;
-    }
+/* Data / quests */
+#data-list {
+    flex: 1;
+    border: 1px solid #00ff66;
+    padding: 2px;
+    box-sizing: border-box;
+    overflow-y: auto;
+}
 
-    /* Simple “off” overlay */
-    #power-off-overlay {
-        position: absolute;
-        inset: 0;
-        background: #000;
-        display: none;
-    }
+.data-item {
+    padding: 1px 2px;
+}
 
-    /* Small HUD text */
-    .hud-line {
-        font-size: 11px;
-    }
+/* Map */
+#map-grid {
+    flex: 1;
+    border: 1px solid #00ff66;
+    padding: 2px;
+    box-sizing: border-box;
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    grid-template-rows: repeat(6, 1fr);
+    gap: 1px;
+}
 
-    /* Scrollbar styling (optional) */
-    ::-webkit-scrollbar {
-        width: 6px;
-    }
-    ::-webkit-scrollbar-track {
-        background: #001900;
-    }
-    ::-webkit-scrollbar-thumb {
-        background: #00ff66;
-    }
+.map-cell {
+    border: 1px solid #003300;
+    background: #001500;
+}
+
+/* Terminal (RADIO) */
+#terminal-panel {
+    font-size: 12px;
+}
+
+#terminal-output {
+    flex: 1;
+    border: 1px solid #00ff66;
+    padding: 2px;
+    box-sizing: border-box;
+    overflow-y: auto;
+    white-space: pre-wrap;
+}
+
+#card-list {
+    margin-top: 2px;
+}
+
+.card-item {
+    padding: 1px 2px;
+}
+
+.card-item.selected {
+    background: #00ff66;
+    color: #001900;
+}
+
+/* Chatroom panel */
+#chat-panel {
+    font-size: 12px;
+}
+
+#chat-tabs {
+    display: flex;
+    gap: 2px;
+    margin-bottom: 2px;
+}
+
+.chat-tab {
+    padding: 1px 4px;
+    border: 1px solid #00ff66;
+    cursor: pointer;
+    font-size: 11px;
+}
+
+.chat-tab.active {
+    background: #00ff66;
+    color: #001900;
+}
+
+.chat-subpanel {
+    display: none;
+    flex: 1;
+    overflow: hidden;
+}
+
+.chat-subpanel.active {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Main chat view */
+#chat-view {
+    flex: 1;
+    border: 1px solid #00ff66;
+    padding: 2px;
+    box-sizing: border-box;
+    overflow-y: auto;
+    white-space: pre-wrap;
+}
+
+#chat-input-row {
+    display: flex;
+    margin-top: 2px;
+}
+
+#chat-input {
+    flex: 1;
+    background: transparent;
+    border: 1px solid #00ff66;
+    color: #00ff66;
+    font-family: inherit;
+    font-size: 12px;
+    padding: 2px;
+    outline: none;
+}
+
+#chat-send {
+    margin-left: 4px;
+    padding: 2px 8px;
+    border: 1px solid #00ff66;
+    background: transparent;
+    color: #00ff66;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+/* Lists */
+.list-view {
+    flex: 1;
+    border: 1px solid #00ff66;
+    padding: 2px;
+    box-sizing: border-box;
+    overflow-y: auto;
+}
+
+.list-item {
+    padding: 1px 2px;
+}
+
+.list-item.selected {
+    background: #00ff66;
+    color: #001900;
+}
+
+/* Settings */
+#settings-form label {
+    display: block;
+    margin-bottom: 4px;
+}
+
+#settings-form input {
+    background: transparent;
+    border: 1px solid #00ff66;
+    color: #00ff66;
+    font-family: inherit;
+    font-size: 12px;
+    padding: 2px;
+    outline: none;
+    width: 200px;
+}
+
+#settings-form button {
+    margin-top: 4px;
+    padding: 2px 8px;
+    border: 1px solid #00ff66;
+    background: transparent;
+    color: #00ff66;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+    width: 6px;
+}
+::-webkit-scrollbar-track {
+    background: #001900;
+}
+::-webkit-scrollbar-thumb {
+    background: #00ff66;
+}
 </style>
 </head>
 <body>
 <div id="pipboy-shell">
     <div id="monitor-border"></div>
+
     <div id="screen">
         <div id="screen-bg-on"></div>
         <div id="screen-inner">
             <div class="scanline"></div>
 
-            <!-- STARTUP SCREEN -->
+            <!-- STARTUP -->
             <div id="startup-screen">
 *****PIP-OS(R) V7.1.0.8*****
 COPYRIGHT 2075 ROBCO(R)
@@ -364,69 +521,135 @@ LOAD ROM(1): DEITRIX 303
                 </div>
 
                 <div id="pip-tabs">
-                    <div class="pip-tab active" data-tab="status">STATUS</div>
-                    <div class="pip-tab" data-tab="special">CHARACTER</div>
-                    <div class="pip-tab" data-tab="items">ITEMS</div>
+                    <div class="pip-tab active" data-tab="stat">STAT</div>
+                    <div class="pip-tab" data-tab="inv">INV</div>
+                    <div class="pip-tab" data-tab="data">DATA</div>
                     <div class="pip-tab" data-tab="map">MAP</div>
-                    <div class="pip-tab" data-tab="radio">TERMINAL</div>
-                    <div class="pip-tab" data-tab="chat">CHATROOM</div>
+                    <div class="pip-tab" data-tab="radio">RADIO</div>
                 </div>
 
                 <div id="content-area">
+                    <!-- LEFT CATEGORY COLUMN -->
                     <div id="left-menu">
-                        <div class="left-menu-item selected" data-menu="health">Health</div>
-                        <div class="left-menu-item" data-menu="stats">Stats</div>
-                        <div class="left-menu-item" data-menu="effects">Effects</div>
-                        <div class="left-menu-item" data-menu="perk">Perks</div>
-                        <div class="left-menu-item" data-menu="misc">Misc</div>
+                        <div class="left-menu-section-title" id="left-menu-title">STATUS</div>
+                        <div class="left-menu-item selected" data-menu="stat-status">STATUS</div>
+                        <div class="left-menu-item" data-menu="stat-special">SPECIAL</div>
+                        <div class="left-menu-item" data-menu="stat-perks">PERKS</div>
+                        <div class="left-menu-item" data-menu="stat-effects">EFFECTS</div>
                     </div>
 
+                    <!-- MAIN PANEL -->
                     <div id="main-panel">
-                        <!-- STATUS PANEL -->
-                        <div class="panel active" data-panel="status">
-                            <div class="hud-line">HP: 100/100   AP: 100/100   RAD: 0</div>
-                            <div class="hud-line">LVL: 1   XP: 0/100</div>
-                            <div style="margin-top:8px;">Vault-Tec Assisted Targeting System (V.A.T.S.) not available in this build.</div>
-                        </div>
-
-                        <!-- CHARACTER PANEL -->
-                        <div class="panel" data-panel="special">
-                            <div>CHARACTER</div>
-                            <div style="margin-top:4px;">
-                                S.P.E.C.I.A.L. overview not implemented—this is your chat-focused Pip-Boy build.
+                        <!-- STAT PANEL -->
+                        <div class="panel active" data-panel="stat">
+                            <div id="stat-panel-top">
+                                <div id="stat-vaultboy">
+                                    <div id="stat-vaultboy-box">
+                                        VAULT-TEC
+                                        <br>ASSISTED
+                                        <br>TARGETING
+                                        <br>SYSTEM
+                                    </div>
+                                    <div style="font-size:10px;">
+                                        HP: <span id="stat-hp">100</span>/100<br>
+                                        AP: <span id="stat-ap">100</span>/100<br>
+                                        RAD: <span id="stat-rad">0</span>
+                                    </div>
+                                </div>
+                                <div id="stat-bars">
+                                    <div class="stat-bar">
+                                        <div class="stat-bar-label">HP</div>
+                                        <div class="stat-bar-track">
+                                            <div class="stat-bar-fill" id="bar-hp" style="width:100%;"></div>
+                                        </div>
+                                    </div>
+                                    <div class="stat-bar">
+                                        <div class="stat-bar-label">AP</div>
+                                        <div class="stat-bar-track">
+                                            <div class="stat-bar-fill" id="bar-ap" style="width:100%;"></div>
+                                        </div>
+                                    </div>
+                                    <div class="stat-bar">
+                                        <div class="stat-bar-label">RADS</div>
+                                        <div class="stat-bar-track">
+                                            <div class="stat-bar-fill" id="bar-rad" style="width:0%;"></div>
+                                        </div>
+                                    </div>
+                                    <div style="margin-top:6px;font-size:11px;">
+                                        LVL: <span id="stat-lvl">1</span>   XP: <span id="stat-xp">0</span>/100
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- ITEMS PANEL -->
-                        <div class="panel" data-panel="items">
-                            <div>ITEMS</div>
-                            <div style="margin-top:4px;">
-                                Inventory placeholder. Imagine Stimpaks, Fancy Lads Snack Cakes, and a very overworked Pip-Boy.
+                        <!-- INV PANEL -->
+                        <div class="panel" data-panel="inv">
+                            <div class="section-header">INVENTORY</div>
+                            <div class="section-subheader">ALL ITEMS</div>
+                            <div id="inv-list">
+                                <div class="inv-item selected">10mm Pistol (DAM 18)</div>
+                                <div class="inv-item">Security Baton (DAM 12)</div>
+                                <div class="inv-item">Stimpak (5)</div>
+                                <div class="inv-item">RadAway (2)</div>
+                                <div class="inv-item">Fancy Lads Snack Cakes</div>
+                                <div class="inv-item">Nuka-Cola</div>
+                                <div class="inv-item">Pip-Boy Diagnostic Holotape</div>
+                            </div>
+                        </div>
+
+                        <!-- DATA PANEL -->
+                        <div class="panel" data-panel="data">
+                            <div class="section-header">DATA</div>
+                            <div class="section-subheader">QUESTS</div>
+                            <div id="data-list">
+                                <div class="data-item">Out of Time</div>
+                                <div class="data-item">Jewel of the Commonwealth</div>
+                                <div class="data-item">Unlikely Valentine</div>
+                                <div class="data-item">MQTT: Establish Connection</div>
+                                <div class="data-item">MQTT: Sync Friends</div>
+                                <div class="data-item">MQTT: Secure the Chatroom</div>
                             </div>
                         </div>
 
                         <!-- MAP PANEL -->
                         <div class="panel" data-panel="map">
-                            <div>MAP</div>
-                            <div style="margin-top:4px;">
-                                Map system placeholder. Future hook for a world map or server browser.
+                            <div class="section-header">MAP</div>
+                            <div class="section-subheader">LOCAL MAP</div>
+                            <div id="map-grid">
+                                <!-- simple grid cells -->
+                                <div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div>
+                                <div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div>
+                                <div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div>
+                                <div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div>
+                                <div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div>
+                                <div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div>
                             </div>
                         </div>
 
-                        <!-- TERMINAL PANEL (CARD SELECT) -->
-                        <div class="panel" data-panel="radio" id="terminal-panel">
-                            <div>ROBCO INDUSTRIES (TM) TERMLINK PROTOCOL</div>
-                            <div>SELECT A CARD:</div>
-                            <div id="card-list">
-                                <div class="card-item selected" data-card="chatroom">[CHATROOM]</div>
-                            </div>
-                            <div style="margin-top:4px;">
-                                Use ↑/↓ to select a card, ENTER to load.
+                        <!-- RADIO PANEL (TERMINAL + CARD SELECT + CHATROOM) -->
+                        <div class="panel" data-panel="radio" id="radio-panel">
+                            <div class="section-header">RADIO / TERMINAL</div>
+                            <div class="section-subheader">ROBCO INDUSTRIES (TM) TERMLINK PROTOCOL</div>
+                            <div id="terminal-panel" style="flex:1;display:flex;flex-direction:column;">
+                                <div id="terminal-output">
+WELCOME TO ROBCO INDUSTRIES (TM) TERMLINK
+SELECT A CARD:
+- CHATROOM
+                                </div>
+                                <div id="card-list">
+                                    <div class="card-item selected" data-card="chatroom">[CHATROOM]</div>
+                                </div>
+                                <div style="margin-top:4px;font-size:11px;">
+                                    Use ↑/↓ to select a card, ENTER to load. Chatroom integrates MQTT channels.
+                                </div>
                             </div>
                         </div>
 
-                        <!-- CHATROOM PANEL -->
+                        <!-- CHATROOM PANEL (opened via card) -->
                         <div class="panel" data-panel="chat" id="chat-panel">
+                            <div class="section-header">CHATROOM</div>
+                            <div class="section-subheader">PIP-BOY NETWORK INTERFACE</div>
+
                             <div id="chat-tabs">
                                 <div class="chat-tab active" data-chat-tab="main">Main Chatroom</div>
                                 <div class="chat-tab" data-chat-tab="active">Active Users</div>
@@ -435,44 +658,48 @@ LOAD ROM(1): DEITRIX 303
                                 <div class="chat-tab" data-chat-tab="settings">Settings</div>
                             </div>
 
-                            <!-- MAIN CHATROOM VIEW -->
-                            <div class="panel active" data-chat-panel="main">
+                            <!-- MAIN CHAT -->
+                            <div class="chat-subpanel active" data-chat-panel="main">
                                 <div id="chat-view"></div>
                                 <div id="chat-input-row">
-                                    <input id="chat-input" type="text" placeholder="Type message (prefix ]\ for admin command)..." />
+                                    <input id="chat-input" type="text" placeholder="Type message (prefix ]\ for admin command, /friend, /dm)..." />
                                     <button id="chat-send">SEND</button>
                                 </div>
                             </div>
 
-                            <!-- ACTIVE USERS VIEW -->
-                            <div class="panel" data-chat-panel="active">
+                            <!-- ACTIVE USERS -->
+                            <div class="chat-subpanel" data-chat-panel="active">
                                 <div class="list-view" id="active-users-list"></div>
                             </div>
 
-                            <!-- FRIENDS VIEW -->
-                            <div class="panel" data-chat-panel="friends">
+                            <!-- FRIENDS -->
+                            <div class="chat-subpanel" data-chat-panel="friends">
                                 <div class="list-view" id="friends-list"></div>
                             </div>
 
-                            <!-- FRIEND REQUESTS VIEW -->
-                            <div class="panel" data-chat-panel="requests">
+                            <!-- FRIEND REQUESTS -->
+                            <div class="chat-subpanel" data-chat-panel="requests">
                                 <div class="list-view" id="friend-requests-list"></div>
                             </div>
 
-                            <!-- SETTINGS VIEW -->
-                            <div class="panel" data-chat-panel="settings">
+                            <!-- SETTINGS -->
+                            <div class="chat-subpanel" data-chat-panel="settings">
                                 <div id="settings-form">
                                     <label>
                                         Username:
                                         <input type="text" id="username-input" placeholder="Enter username" />
                                     </label>
                                     <button id="save-username">Set Username</button>
-                                    <div style="margin-top:6px;">
-                                        Friend a user: type their name in chat as <code>/friend username</code>.
+                                    <div style="margin-top:6px;font-size:11px;">
+                                        Add friend: <code>/friend username</code><br>
+                                        Direct message: <code>/dm username message...</code><br>
+                                        Admin commands (if you treat this client as admin):<br>
+                                        <code>]\aboutblank</code>, <code>]\kick username</code>, <code>]\kick everyone</code>, <code>]\service</code>, <code>]\reload</code>
                                     </div>
                                 </div>
                             </div>
                         </div>
+
                     </div> <!-- main-panel -->
                 </div> <!-- content-area -->
             </div> <!-- main-ui -->
@@ -482,11 +709,11 @@ LOAD ROM(1): DEITRIX 303
     <div id="power-off-overlay"></div>
 </div>
 
-<!-- MQTT.js from CDN -->
+<!-- MQTT.js -->
 <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 <script>
 (function() {
-    // ---------- BASIC VISUAL SETUP ----------
+    // ---------- VISUAL SETUP ----------
     const monitorBorder = document.getElementById('monitor-border');
     const screenBgOn = document.getElementById('screen-bg-on');
     const powerOffOverlay = document.getElementById('power-off-overlay');
@@ -494,11 +721,10 @@ LOAD ROM(1): DEITRIX 303
     const mainUI = document.getElementById('main-ui');
     const mqttStatusEl = document.getElementById('mqtt-status');
 
-    // Images
     const IMG_MONITOR_ON = 'assets/monitorborder.png';
     const IMG_MONITOR_OFF = 'assets/monitorborder-off.png';
-    const IMG_BG_ON = '/assets/bg-on.png';
-    const IMG_BG_OFF = '/assets/bg-off.png';
+    const IMG_BG_ON = 'assets/bg-on.png';
+    const IMG_BG_OFF = 'assets/bg-off.png';
 
     function setPower(on) {
         if (on) {
@@ -514,13 +740,13 @@ LOAD ROM(1): DEITRIX 303
 
     setPower(true);
 
-    // Startup sequence
+    // Startup delay
     setTimeout(() => {
         startupScreen.style.display = 'none';
         mainUI.style.display = 'block';
     }, 3500);
 
-    // ---------- TAB / PANEL LOGIC ----------
+    // ---------- TOP TABS ----------
     const pipTabs = document.querySelectorAll('.pip-tab');
     const panels = document.querySelectorAll('.panel[data-panel]');
     pipTabs.forEach(tab => {
@@ -529,31 +755,118 @@ LOAD ROM(1): DEITRIX 303
             pipTabs.forEach(t => t.classList.remove('active'));
             tab.classList.add('active');
             panels.forEach(p => {
-                if (p.getAttribute('data-panel') === target) {
-                    p.classList.add('active');
-                } else {
-                    p.classList.remove('active');
-                }
+                p.classList.toggle('active', p.getAttribute('data-panel') === target);
             });
+            updateLeftMenuForTab(target);
         });
     });
 
-    // Left menu (cosmetic)
-    const leftMenuItems = document.querySelectorAll('.left-menu-item');
+    // ---------- LEFT MENU ----------
+    const leftMenu = document.getElementById('left-menu');
+    const leftMenuTitle = document.getElementById('left-menu-title');
+    let leftMenuItems = [];
     let leftMenuIndex = 0;
+
+    const leftMenuConfig = {
+        stat: {
+            title: 'STATUS',
+            items: [
+                { id: 'stat-status', label: 'STATUS' },
+                { id: 'stat-special', label: 'SPECIAL' },
+                { id: 'stat-perks', label: 'PERKS' },
+                { id: 'stat-effects', label: 'EFFECTS' }
+            ]
+        },
+        inv: {
+            title: 'INVENTORY',
+            items: [
+                { id: 'inv-all', label: 'ALL' },
+                { id: 'inv-weapons', label: 'WEAPONS' },
+                { id: 'inv-aid', label: 'AID' },
+                { id: 'inv-misc', label: 'MISC' }
+            ]
+        },
+        data: {
+            title: 'DATA',
+            items: [
+                { id: 'data-quests', label: 'QUESTS' },
+                { id: 'data-workshops', label: 'WORKSHOPS' },
+                { id: 'data-stats', label: 'STATS' }
+            ]
+        },
+        map: {
+            title: 'MAP',
+            items: [
+                { id: 'map-local', label: 'LOCAL MAP' },
+                { id: 'map-world', label: 'WORLD MAP' }
+            ]
+        },
+        radio: {
+            title: 'RADIO',
+            items: [
+                { id: 'radio-terminal', label: 'TERMINAL' },
+                { id: 'radio-chat', label: 'CHATROOM' }
+            ]
+        }
+    };
+
+    function updateLeftMenuForTab(tab) {
+        const cfg = leftMenuConfig[tab];
+        leftMenuTitle.textContent = cfg.title;
+        leftMenu.innerHTML = '<div class="left-menu-section-title" id="left-menu-title">' + cfg.title + '</div>';
+        cfg.items.forEach((item, idx) => {
+            const div = document.createElement('div');
+            div.className = 'left-menu-item' + (idx === 0 ? ' selected' : '');
+            div.dataset.menu = item.id;
+            div.textContent = item.label;
+            leftMenu.appendChild(div);
+        });
+        leftMenuItems = leftMenu.querySelectorAll('.left-menu-item');
+        leftMenuIndex = 0;
+        leftMenuItems.forEach((item, idx) => {
+            item.addEventListener('click', () => {
+                leftMenuIndex = idx;
+                updateLeftMenuSelection();
+                handleLeftMenuAction(tab, item.dataset.menu);
+            });
+        });
+    }
+
     function updateLeftMenuSelection() {
         leftMenuItems.forEach((item, idx) => {
             item.classList.toggle('selected', idx === leftMenuIndex);
         });
     }
-    leftMenuItems.forEach((item, idx) => {
-        item.addEventListener('click', () => {
-            leftMenuIndex = idx;
-            updateLeftMenuSelection();
-        });
-    });
 
-    // Terminal card selection
+    function handleLeftMenuAction(tab, menuId) {
+        if (tab === 'radio') {
+            if (menuId === 'radio-terminal') {
+                // show RADIO panel (terminal)
+                showPanel('radio');
+            } else if (menuId === 'radio-chat') {
+                // show CHATROOM panel
+                showPanel('chat');
+            }
+        } else {
+            // other tabs: we keep single panel per tab for now
+            showPanel(tab);
+        }
+    }
+
+    function showPanel(panelName) {
+        panels.forEach(p => {
+            p.classList.toggle('active', p.getAttribute('data-panel') === panelName);
+        });
+        // also update top tab highlight
+        pipTabs.forEach(t => {
+            t.classList.toggle('active', t.getAttribute('data-tab') === panelName);
+        });
+    }
+
+    // Initialize left menu for STAT
+    updateLeftMenuForTab('stat');
+
+    // ---------- TERMINAL CARD SELECTION ----------
     const cardItems = document.querySelectorAll('.card-item');
     let cardIndex = 0;
     function updateCardSelection() {
@@ -561,22 +874,16 @@ LOAD ROM(1): DEITRIX 303
             item.classList.toggle('selected', idx === cardIndex);
         });
     }
-
     function openSelectedCard() {
         const card = cardItems[cardIndex].getAttribute('data-card');
         if (card === 'chatroom') {
-            // Switch to CHATROOM tab
-            pipTabs.forEach(t => {
-                if (t.getAttribute('data-tab') === 'chat') {
-                    t.click();
-                }
-            });
+            showPanel('chat');
         }
     }
 
-    // Chat tabs
+    // ---------- CHATROOM TABS ----------
     const chatTabs = document.querySelectorAll('.chat-tab');
-    const chatPanels = document.querySelectorAll('.panel[data-chat-panel]');
+    const chatPanels = document.querySelectorAll('.chat-subpanel');
     let chatTabIndex = 0;
     function setChatTabByIndex(idx) {
         chatTabIndex = idx;
@@ -606,8 +913,8 @@ LOAD ROM(1): DEITRIX 303
     usernameInput.value = username;
 
     let activeUsers = new Set();
-    let friends = []; // array of {a,b}
-    let friendRequests = []; // array of {from,to,raw}
+    let friends = []; // {a,b}
+    let friendRequests = []; // {from,to,raw}
 
     function logChat(line) {
         const atBottom = chatView.scrollTop + chatView.clientHeight >= chatView.scrollHeight - 5;
@@ -648,7 +955,7 @@ LOAD ROM(1): DEITRIX 303
         });
     }
 
-    // ---------- MQTT SETUP ----------
+    // ---------- MQTT ----------
     const MQTT_BROKER_URL = 'wss://mqtt.flespi.io:443';
     const MQTT_TOKEN = 'g977bmKI5b1CdmpybeBxi4QfXcrGVva0oUvZc4mb9lhxNkIL3L2pXhIfhI7NP2J0';
 
@@ -674,7 +981,6 @@ LOAD ROM(1): DEITRIX 303
             mqttStatusEl.textContent = 'CONNECTED';
             mqttStatusEl.style.color = '#00ff66';
             client.subscribe([TOPIC_PUBLIC, TOPIC_COMMANDS, TOPIC_FRIEND_REQUEST, TOPIC_FRIENDS, TOPIC_PRESENCE]);
-            // announce presence
             publishPresence('online');
         });
 
@@ -723,8 +1029,8 @@ LOAD ROM(1): DEITRIX 303
         if (!text) return;
         chatInput.value = '';
 
-        if (text.startsWith(']/')) {
-            // admin command: publish to commands topic
+        // Admin commands: starts with ]\
+        if (text.startsWith(']\\')) {
             const cmd = text.substring(2).trim();
             const msg = 'u="' + username + '" cmd="' + cmd + '"';
             publish(TOPIC_COMMANDS, msg);
@@ -760,23 +1066,18 @@ LOAD ROM(1): DEITRIX 303
         }
     });
 
-    // Handle commands from /commands topic
     function handleCommandMessage(msg) {
-        // Expected format: u="username" cmd="aboutblank" etc.
-        // Very simple parse:
         const cmdMatch = msg.match(/cmd="([^"]+)"/);
         if (!cmdMatch) return;
         const cmd = cmdMatch[1];
 
         if (cmd === 'aboutblank') {
-            // Kick everyone: blank screen
             document.location.href = 'about:blank';
         } else if (cmd.startsWith('kick ')) {
             const target = cmd.substring(5).trim();
             if (target === 'everyone') {
                 document.location.href = 'about:blank';
             } else {
-                // Kick specific user
                 if (target === username) {
                     document.location.href = 'about:blank';
                 }
@@ -790,7 +1091,6 @@ LOAD ROM(1): DEITRIX 303
 
     // ---------- FRIEND SYSTEM ----------
     function handleFriendRequestMessage(msg) {
-        // Format: u="username" attempent to add u="otherusername"
         const fromMatch = msg.match(/u="([^"]+)"/);
         const toMatch = msg.match(/add u="([^"]+)"/);
         if (!fromMatch || !toMatch) return;
@@ -800,17 +1100,20 @@ LOAD ROM(1): DEITRIX 303
         if (to === username) {
             friendRequests.push({ from, to, raw: msg });
             renderFriendRequests();
+        } else {
+            // also listen for acceptance messages
+            const accMatch = msg.match(/Accepted u="([^"]+)"/);
+            if (accMatch) {
+                // acceptance is handled by friends topic anyway
+            }
         }
     }
 
     function handleFriendsMessage(msg) {
-        // Format: "1st user" "2nd user"
         const m = msg.match(/"([^"]+)"\s+"([^"]+)"/);
         if (!m) return;
         const a = m[1];
         const b = m[2];
-
-        // Avoid duplicates
         if (!friends.some(p => (p.a === a && p.b === b) || (p.a === b && p.b === a))) {
             friends.push({ a, b });
             renderFriends();
@@ -822,16 +1125,13 @@ LOAD ROM(1): DEITRIX 303
         if (!req) return;
         const msg = 'u="' + req.to + '" Accepted u="' + req.from + '"\'s Friend Request';
         publish(TOPIC_FRIEND_REQUEST, msg);
-        // Also publish to friends topic
         const pairMsg = '"' + req.to + '" "' + req.from + '"';
         publish(TOPIC_FRIENDS, pairMsg);
         friendRequests.splice(index, 1);
         renderFriendRequests();
     }
 
-    // Presence
     function handlePresenceMessage(msg) {
-        // Format: u="username" presence="online/offline"
         const uMatch = msg.match(/u="([^"]+)"/);
         const sMatch = msg.match(/presence="([^"]+)"/);
         if (!uMatch || !sMatch) return;
@@ -849,16 +1149,15 @@ LOAD ROM(1): DEITRIX 303
     saveUsernameBtn.addEventListener('click', () => {
         const newName = usernameInput.value.trim();
         if (!newName) return;
-        // announce offline for old name
         publishPresence('offline');
         username = newName;
         publishPresence('online');
         logChat('[SYSTEM] Username set to ' + username);
     });
 
-    // ---------- KEYBOARD NAVIGATION ----------
+    // ---------- KEYBOARD NAV ----------
     document.addEventListener('keydown', (e) => {
-        const activePanel = document.querySelector('.panel[data-panel].active');
+        const activePanel = document.querySelector('.panel.active');
         const activePanelName = activePanel ? activePanel.getAttribute('data-panel') : '';
 
         if (activePanelName === 'radio') {
@@ -876,7 +1175,7 @@ LOAD ROM(1): DEITRIX 303
                 e.preventDefault();
             }
         } else if (activePanelName === 'chat') {
-            // Chatroom navigation
+            // Chatroom tabs
             if (e.key === 'ArrowLeft') {
                 setChatTabByIndex((chatTabIndex - 1 + chatTabs.length) % chatTabs.length);
                 e.preventDefault();
@@ -884,12 +1183,10 @@ LOAD ROM(1): DEITRIX 303
                 setChatTabByIndex((chatTabIndex + 1) % chatTabs.length);
                 e.preventDefault();
             } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'Enter') {
-                // Friend requests accept via keyboard when in Friend Requests tab
                 const currentTab = chatTabs[chatTabIndex].getAttribute('data-chat-tab');
                 if (currentTab === 'requests') {
                     const items = friendRequestsList.querySelectorAll('.list-item');
                     if (items.length > 0) {
-                        // simple single-selection cycling
                         let selIndex = -1;
                         items.forEach((it, idx) => {
                             if (it.classList.contains('selected')) selIndex = idx;
@@ -919,16 +1216,22 @@ LOAD ROM(1): DEITRIX 303
                 leftMenuIndex = (leftMenuIndex + 1) % leftMenuItems.length;
                 updateLeftMenuSelection();
                 e.preventDefault();
+            } else if (e.key === 'Enter') {
+                const tab = document.querySelector('.pip-tab.active').getAttribute('data-tab');
+                const item = leftMenuItems[leftMenuIndex];
+                if (item) {
+                    handleLeftMenuAction(tab, item.dataset.menu);
+                }
+                e.preventDefault();
             }
         }
     });
 
-    // ---------- WINDOW LIFECYCLE ----------
+    // ---------- LIFECYCLE ----------
     window.addEventListener('beforeunload', () => {
         publishPresence('offline');
     });
 
-    // Connect MQTT after a short delay (let UI come up)
     setTimeout(connectMQTT, 1000);
 })();
 </script>
