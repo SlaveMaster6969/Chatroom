@@ -2,8 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Pip-Boy 3000 Mk IV – MQTT Chatroom</title>
+<title>Pip‑Boy 3000 Mk IV – MQTT Chatroom (Fullscreen)</title>
 <style>
+/* ====== GLOBAL ====== */
 html, body {
     margin: 0;
     padding: 0;
@@ -15,309 +16,117 @@ html, body {
     color: #00ff66;
 }
 
-/* Fullscreen shell */
-#root {
+/* Fullscreen CRT screen */
+#screen {
     position: fixed;
     inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #000;
-}
-
-/* 1280x720 canvas */
-#pipboy-screen {
-    position: relative;
-    width: 1280px;
-    height: 720px;
-    background: #000;
-    overflow: hidden;
-}
-
-/* Proportionally scaled border: 930x700 -> 956x720 */
-#border-wrapper {
-    position: absolute;
-    width: 956px;
-    height: 720px;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-}
-
-/* Border image */
-#monitor-border {
-    position: absolute;
-    inset: 0;
-    background-size: 100% 100%;
-    background-position: center;
-    background-repeat: no-repeat;
-    pointer-events: none;
-}
-
-/* Power-off overlay */
-#power-off-overlay {
-    position: absolute;
-    inset: 0;
-    background: #000;
-    display: none;
-}
-
-/* Glass area (scaled from 553x335 at 93,82 -> 568x344 at 95,84 inside 956x720) */
-#glass {
-    position: absolute;
-    left: 95px;
-    top: 84px;
-    width: 568px;
-    height: 344px;
     background: #001900;
-    overflow: hidden;
     color: #00ff66;
-    text-shadow: 0 0 4px #00ff66;
-    box-shadow:
-        0 0 25px rgba(0, 255, 102, 0.4),
-        inset 0 0 40px rgba(0, 0, 0, 0.9);
-    border-radius: 12px;
+    text-shadow: 0 0 8px #00ff66;
+    overflow: hidden;
 }
 
-/* CRT curvature */
-#glass::before {
+/* CRT curvature + glow */
+#screen::before {
     content: "";
     position: absolute;
     inset: -20%;
     background:
-        radial-gradient(circle at 50% 0%, rgba(255,255,255,0.08), transparent 60%),
-        radial-gradient(circle at 0% 50%, rgba(255,255,255,0.05), transparent 55%),
-        radial-gradient(circle at 100% 50%, rgba(255,255,255,0.05), transparent 55%);
+        radial-gradient(circle at 50% 0%, rgba(255,255,255,0.12), transparent 60%),
+        radial-gradient(circle at 0% 50%, rgba(255,255,255,0.06), transparent 55%),
+        radial-gradient(circle at 100% 50%, rgba(255,255,255,0.06), transparent 55%);
     mix-blend-mode: screen;
     pointer-events: none;
 }
 
-/* Scanline texture */
-#screen-bg-on {
-    position: absolute;
-    inset: 0;
-    background-size: cover;
-    background-position: center;
-    opacity: 0.25;
-    mix-blend-mode: screen;
-    pointer-events: none;
-}
-
-/* Inner frame */
-#screen-inner {
-    position: absolute;
-    inset: 6px;
-    border: 2px solid #00ff66;
-    padding: 4px;
-    box-sizing: border-box;
-    animation: flicker 1.6s infinite;
-    overflow: hidden;
-}
-
-/* Flicker */
-@keyframes flicker {
-    0% { opacity: 0.95; }
-    5% { opacity: 0.7; }
-    10% { opacity: 0.98; }
-    15% { opacity: 0.6; }
-    20% { opacity: 0.95; }
-    25% { opacity: 0.8; }
-    30% { opacity: 0.99; }
-    35% { opacity: 0.7; }
-    40% { opacity: 0.95; }
-    100% { opacity: 0.95; }
-}
-
-/* Scanline bar */
+/* Scanline */
 .scanline {
     position: absolute;
     left: 0;
     right: 0;
-    height: 2px;
+    height: 3px;
     background: linear-gradient(to bottom, rgba(0,255,102,0.4), transparent);
-    animation: scan 2.2s linear infinite;
+    animation: scan 2.5s linear infinite;
     pointer-events: none;
 }
-
 @keyframes scan {
-    0% { top: -2px; }
+    0% { top: -3px; }
     100% { top: 100%; }
 }
 
-/* Glow pulse */
-@keyframes glowPulse {
-    0% { box-shadow: 0 0 4px #00ff66; }
-    50% { box-shadow: 0 0 12px #00ff66; }
-    100% { box-shadow: 0 0 4px #00ff66; }
-}
+/* Text sizes (big UI) */
+.big   { font-size: 32px; }
+.med   { font-size: 24px; }
+.small { font-size: 18px; }
 
-/* Startup screen */
-#startup-screen {
-    position: absolute;
-    inset: 0;
-    padding: 6px;
-    box-sizing: border-box;
-    font-size: 13px;
-    line-height: 1.4;
-    white-space: pre;
-}
-
-/* Main UI */
-#main-ui {
-    position: absolute;
-    inset: 0;
-    display: none;
-    font-size: 13px; /* hybrid scale */
-}
-
-/* Top bar */
+/* ====== LAYOUT ====== */
 #top-bar {
     display: flex;
     justify-content: space-between;
-    font-size: 11px;
-    margin-bottom: 3px;
+    padding: 10px 20px;
+    font-size: 26px;
 }
 
-#top-bar .section-title {
-    font-weight: bold;
-    letter-spacing: 2px;
-}
-
-/* Tabs STAT/INV/DATA/MAP/RADIO */
-#pip-tabs {
+#tabs {
     display: flex;
-    gap: 3px;
-    margin-bottom: 3px;
-    font-size: 11px;
+    gap: 10px;
+    padding: 10px 20px;
+    font-size: 26px;
 }
 
-.pip-tab {
-    padding: 2px 7px;
-    border: 1px solid #00ff66;
+.tab {
+    padding: 6px 16px;
+    border: 2px solid #00ff66;
     cursor: pointer;
     transition: background 0.12s, color 0.12s, transform 0.08s;
 }
-
-.pip-tab:hover {
+.tab:hover {
     transform: translateY(-1px);
 }
-
-.pip-tab.active {
+.tab.active {
     background: #00ff66;
     color: #001900;
-    animation: glowPulse 1.2s infinite;
+    text-shadow: none;
 }
 
-/* Content layout */
-#content-area {
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: 30px;
-    bottom: 0;
-    display: flex;
-}
-
-/* Left menu */
-#left-menu {
-    width: 130px;
-    border-right: 1px solid #00ff66;
-    padding-right: 3px;
-    box-sizing: border-box;
-    font-size: 11px;
-}
-
-.left-menu-section-title {
-    font-size: 10px;
-    margin-bottom: 2px;
-    opacity: 0.8;
-}
-
-.left-menu-item {
-    padding: 2px 2px;
-    cursor: pointer;
-    transition: background 0.12s, color 0.12s;
-}
-
-.left-menu-item.selected {
-    background: #00ff66;
-    color: #001900;
-}
-
-/* Main panel */
-#main-panel {
-    flex: 1;
-    padding-left: 5px;
-    box-sizing: border-box;
-    font-size: 12px;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-}
-
+/* Panels */
 .panel {
     display: none;
-    flex: 1;
-    overflow: hidden;
+    padding: 20px;
+    height: calc(100% - 140px);
+    overflow-y: auto;
 }
-
 .panel.active {
-    display: flex;
-    flex-direction: column;
+    display: block;
 }
 
 /* STAT panel */
-#stat-panel-top {
-    display: flex;
-    flex: 1;
+#stat-panel {
+    display: grid;
+    grid-template-columns: 1.2fr 1.8fr;
+    gap: 20px;
 }
-
-#stat-vaultboy {
-    width: 120px;
-    border-right: 1px solid #00ff66;
-    padding-right: 4px;
-    box-sizing: border-box;
+#stat-left {
+    border-right: 2px solid #00ff66;
+    padding-right: 20px;
 }
-
-#stat-vaultboy-box {
-    width: 100%;
-    height: 135px;
-    border: 1px solid #00ff66;
-    margin-bottom: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 9px;
+#stat-right {
+    padding-left: 10px;
 }
-
-#stat-limbs {
-    font-size: 9px;
-    margin-top: 4px;
-}
-
-#stat-bars {
-    flex: 1;
-    padding-left: 6px;
-    box-sizing: border-box;
-}
-
 .stat-bar {
+    margin-bottom: 12px;
+}
+.stat-bar-label {
+    font-size: 22px;
     margin-bottom: 4px;
 }
-
-.stat-bar-label {
-    font-size: 10px;
-    margin-bottom: 1px;
-}
-
 .stat-bar-track {
     width: 100%;
-    height: 6px;
-    border: 1px solid #00ff66;
+    height: 18px;
+    border: 2px solid #00ff66;
     box-sizing: border-box;
     position: relative;
 }
-
 .stat-bar-fill {
     position: absolute;
     left: 0;
@@ -326,266 +135,224 @@ html, body {
     background: #00ff66;
 }
 
-/* Section headers */
-.section-header {
-    font-size: 12px;
-    margin-bottom: 2px;
-}
-
-.section-subheader {
-    font-size: 11px;
-    opacity: 0.8;
-    margin-bottom: 4px;
-}
-
 /* Inventory */
+.inv-category-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+.inv-category {
+    padding: 4px 12px;
+    border: 2px solid #00ff66;
+    cursor: pointer;
+    font-size: 22px;
+}
+.inv-category.active {
+    background: #00ff66;
+    color: #001900;
+}
+#inv-layout {
+    display: grid;
+    grid-template-columns: 1.4fr 1.6fr;
+    gap: 20px;
+}
 #inv-list {
-    flex: 1;
-    border: 1px solid #00ff66;
-    padding: 2px;
-    box-sizing: border-box;
+    border: 2px solid #00ff66;
+    padding: 10px;
+    max-height: 60vh;
     overflow-y: auto;
 }
-
 .inv-item {
-    padding: 1px 2px;
+    padding: 6px;
+    border-bottom: 1px solid #00ff66;
+    font-size: 24px;
     cursor: pointer;
-    transition: background 0.12s, color 0.12s;
 }
-
 .inv-item.selected {
     background: #00ff66;
     color: #001900;
 }
-
-#inv-description {
-    margin-top: 4px;
-    border: 1px solid #00ff66;
-    padding: 2px;
-    box-sizing: border-box;
-    min-height: 40px;
+#inv-desc {
+    border: 2px solid #00ff66;
+    padding: 10px;
+    font-size: 22px;
     white-space: pre-wrap;
 }
 
-/* Data */
+/* DATA */
 #data-list {
-    flex: 1;
-    border: 1px solid #00ff66;
-    padding: 2px;
-    box-sizing: border-box;
-    overflow-y: auto;
+    border: 2px solid #00ff66;
+    padding: 10px;
+    font-size: 24px;
 }
 
-.data-item {
-    padding: 1px 2px;
-}
-
-/* Map */
+/* MAP */
 #map-grid {
-    flex: 1;
-    border: 1px solid #00ff66;
-    padding: 2px;
-    box-sizing: border-box;
     display: grid;
-    grid-template-columns: repeat(10, 1fr);
-    grid-template-rows: repeat(6, 1fr);
-    gap: 1px;
+    grid-template-columns: repeat(12, 1fr);
+    grid-template-rows: repeat(8, 1fr);
+    gap: 2px;
+    border: 2px solid #00ff66;
+    padding: 4px;
+    height: 60vh;
 }
-
 .map-cell {
     border: 1px solid #003300;
     background: #001500;
 }
 
-/* Radio */
-#radio-stations {
-    flex: 1;
-    border: 1px solid #00ff66;
-    padding: 2px;
-    box-sizing: border-box;
-    overflow-y: auto;
-}
-
-.radio-station {
-    padding: 1px 2px;
-    cursor: pointer;
-    transition: background 0.12s, color 0.12s;
-}
-
-.radio-station.selected {
-    background: #00ff66;
-    color: #001900;
-}
-
-#radio-info {
-    margin-top: 4px;
-    border: 1px solid #00ff66;
-    padding: 2px;
-    box-sizing: border-box;
-    min-height: 40px;
-    white-space: pre-wrap;
-}
-
-/* Terminal card overlay */
-#terminal-card-ui {
-    position: absolute;
-    inset: 0;
-    background: #001900;
-    display: none;
+/* RADIO */
+#radio-list {
+    border: 2px solid #00ff66;
     padding: 10px;
-    box-sizing: border-box;
-    text-align: center;
-    font-size: 13px;
+    font-size: 24px;
 }
-
-#terminal-card-title {
-    font-size: 14px;
-    margin-bottom: 6px;
-}
-
-#terminal-card-list {
-    margin-top: 10px;
-    display: inline-block;
-    text-align: left;
-}
-
-.terminal-card-item {
-    padding: 2px 4px;
-    border: 1px solid #00ff66;
-    margin-bottom: 4px;
+.radio-item {
+    padding: 6px;
+    border-bottom: 1px solid #00ff66;
     cursor: pointer;
-    transition: background 0.12s, color 0.12s, transform 0.08s;
 }
-
-.terminal-card-item:hover {
-    transform: translateX(2px);
-}
-
-.terminal-card-item.selected {
+.radio-item.selected {
     background: #00ff66;
     color: #001900;
-    animation: glowPulse 1.2s infinite;
+}
+#radio-info {
+    margin-top: 10px;
+    border: 2px solid #00ff66;
+    padding: 10px;
+    font-size: 22px;
 }
 
-/* Chatroom */
-#chat-panel {
-    font-size: 12px;
+/* TERMINAL */
+#terminal-panel button {
+    font-size: 28px;
+    padding: 16px 30px;
+    border: 2px solid #00ff66;
+    background: transparent;
+    color: #00ff66;
+    cursor: pointer;
 }
 
+/* CHAT */
+#chat-layout {
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    gap: 10px;
+    height: 100%;
+}
 #chat-tabs {
     display: flex;
-    gap: 2px;
-    margin-bottom: 2px;
+    gap: 10px;
 }
-
 .chat-tab {
-    padding: 1px 4px;
-    border: 1px solid #00ff66;
+    padding: 4px 12px;
+    border: 2px solid #00ff66;
     cursor: pointer;
-    font-size: 11px;
-    transition: background 0.12s, color 0.12s;
+    font-size: 22px;
 }
-
 .chat-tab.active {
     background: #00ff66;
     color: #001900;
 }
-
 .chat-subpanel {
     display: none;
-    flex: 1;
-    overflow: hidden;
 }
-
 .chat-subpanel.active {
-    display: flex;
-    flex-direction: column;
+    display: block;
 }
-
-/* Main chat */
 #chat-view {
-    flex: 1;
-    border: 1px solid #00ff66;
-    padding: 2px;
-    box-sizing: border-box;
+    border: 2px solid #00ff66;
+    padding: 10px;
+    height: 50vh;
     overflow-y: auto;
+    font-size: 22px;
     white-space: pre-wrap;
 }
-
 #chat-input-row {
     display: flex;
-    margin-top: 2px;
+    gap: 10px;
 }
-
 #chat-input {
     flex: 1;
+    font-size: 24px;
+    padding: 10px;
     background: transparent;
-    border: 1px solid #00ff66;
+    border: 2px solid #00ff66;
     color: #00ff66;
-    font-family: inherit;
-    font-size: 12px;
-    padding: 2px;
-    outline: none;
 }
-
 #chat-send {
-    margin-left: 4px;
-    padding: 2px 8px;
-    border: 1px solid #00ff66;
+    font-size: 24px;
+    padding: 10px 20px;
+    border: 2px solid #00ff66;
     background: transparent;
     color: #00ff66;
     cursor: pointer;
-    font-size: 12px;
 }
 
 /* Lists */
-.list-view {
-    flex: 1;
-    border: 1px solid #00ff66;
-    padding: 2px;
-    box-sizing: border-box;
+.list-box {
+    border: 2px solid #00ff66;
+    padding: 10px;
+    height: 50vh;
     overflow-y: auto;
+    font-size: 22px;
 }
-
 .list-item {
-    padding: 1px 2px;
-}
-
-.list-item.selected {
-    background: #00ff66;
-    color: #001900;
+    padding: 6px;
+    border-bottom: 1px solid #00ff66;
 }
 
 /* Settings */
 #settings-form label {
     display: block;
-    margin-bottom: 4px;
+    margin-bottom: 10px;
+    font-size: 22px;
 }
-
 #settings-form input {
+    font-size: 24px;
+    padding: 8px;
     background: transparent;
-    border: 1px solid #00ff66;
+    border: 2px solid #00ff66;
     color: #00ff66;
-    font-family: inherit;
-    font-size: 12px;
-    padding: 2px;
-    outline: none;
-    width: 220px;
+    width: 320px;
 }
-
 #settings-form button {
-    margin-top: 4px;
-    padding: 2px 8px;
-    border: 1px solid #00ff66;
+    font-size: 24px;
+    padding: 8px 16px;
+    border: 2px solid #00ff66;
     background: transparent;
     color: #00ff66;
     cursor: pointer;
-    font-size: 12px;
+}
+
+/* Terminal Card Overlay */
+#terminal-card {
+    position: fixed;
+    inset: 0;
+    background: #001900;
+    display: none;
+    padding: 40px;
+    box-sizing: border-box;
+}
+#terminal-card-title {
+    font-size: 32px;
+    margin-bottom: 20px;
+}
+.card-option {
+    padding: 12px;
+    border: 2px solid #00ff66;
+    margin-bottom: 20px;
+    font-size: 28px;
+    cursor: pointer;
+}
+.card-option:hover {
+    background: #00ff66;
+    color: #001900;
 }
 
 /* Scrollbars */
 ::-webkit-scrollbar {
-    width: 6px;
+    width: 8px;
 }
 ::-webkit-scrollbar-track {
     background: #001900;
@@ -596,1005 +363,668 @@ html, body {
 </style>
 </head>
 <body>
-<div id="root">
-    <div id="pipboy-screen">
-        <div id="border-wrapper">
-            <div id="monitor-border"></div>
-            <div id="power-off-overlay"></div>
+<div id="screen">
+    <div class="scanline"></div>
 
-            <div id="glass">
-                <div id="screen-bg-on"></div>
-                <div id="screen-inner">
-                    <div class="scanline"></div>
+    <!-- TOP BAR -->
+    <div id="top-bar">
+        <div>PIP-BOY 3000 MK IV</div>
+        <div>STATUS: <span id="mqtt-status">DISCONNECTED</span></div>
+    </div>
 
-                    <!-- STARTUP -->
-                    <div id="startup-screen">
-*****PIP-OS(R) V7.1.0.8*****
-COPYRIGHT 2075 ROBCO(R)
-LOADER V1.1
-EXEC VERSION 41.10
-64k RAM SYSTEM
-38911 BYTES FREE
-NO HOLOTAPE FOUND
-LOAD ROM(1): DEITRIX 303
+    <!-- MAIN TABS -->
+    <div id="tabs">
+        <div class="tab active" data-panel="stat">STAT</div>
+        <div class="tab" data-panel="inv">INV</div>
+        <div class="tab" data-panel="data">DATA</div>
+        <div class="tab" data-panel="map">MAP</div>
+        <div class="tab" data-panel="radio">RADIO</div>
+        <div class="tab" data-panel="terminal">TERMINAL</div>
+        <div class="tab" data-panel="chat">CHAT</div>
+    </div>
+
+    <!-- PANELS -->
+    <!-- STAT -->
+    <div id="stat" class="panel active">
+        <div id="stat-panel">
+            <div id="stat-left" class="big">
+                HP: <span id="stat-hp">100</span>/100<br>
+                AP: <span id="stat-ap">100</span>/100<br>
+                RAD: <span id="stat-rad">0</span><br><br>
+                LEVEL: <span id="stat-lvl">1</span><br>
+                XP: <span id="stat-xp">0</span>/100
+            </div>
+            <div id="stat-right">
+                <div class="stat-bar">
+                    <div class="stat-bar-label">HP</div>
+                    <div class="stat-bar-track">
+                        <div class="stat-bar-fill" id="bar-hp" style="width:100%;"></div>
                     </div>
-
-                    <!-- TERMINAL CARD -->
-                    <div id="terminal-card-ui">
-ROBCO INDUSTRIES (TM) TERMLINK
-------------------------------------------------
-SELECT A CARD
-
-                        <div id="terminal-card-list">
-                            <div class="terminal-card-item selected" data-card="chatroom">TERMINAL CHATROOM</div>
-                        </div>
-                        <div style="margin-top:8px;font-size:11px;">
-                            Use ↑/↓ to select, ENTER or click to load.
-                        </div>
+                </div>
+                <div class="stat-bar">
+                    <div class="stat-bar-label">AP</div>
+                    <div class="stat-bar-track">
+                        <div class="stat-bar-fill" id="bar-ap" style="width:100%;"></div>
                     </div>
+                </div>
+                <div class="stat-bar">
+                    <div class="stat-bar-label">RADS</div>
+                    <div class="stat-bar-track">
+                        <div class="stat-bar-fill" id="bar-rad" style="width:0%;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-                    <!-- MAIN UI -->
-                    <div id="main-ui">
-                        <div id="top-bar">
-                            <div class="section-title">PIP-BOY 3000 MK IV</div>
-                            <div>STATUS: <span id="mqtt-status">DISCONNECTED</span></div>
-                        </div>
+    <!-- INV -->
+    <div id="inv" class="panel">
+        <div class="inv-category-row">
+            <div class="inv-category active" data-cat="ALL">ALL</div>
+            <div class="inv-category" data-cat="WEAPONS">WEAPONS</div>
+            <div class="inv-category" data-cat="AID">AID</div>
+            <div class="inv-category" data-cat="MISC">MISC</div>
+        </div>
+        <div id="inv-layout">
+            <div id="inv-list"></div>
+            <div id="inv-desc" class="med"></div>
+        </div>
+    </div>
 
-                        <div id="pip-tabs">
-                            <div class="pip-tab active" data-tab="stat">STAT</div>
-                            <div class="pip-tab" data-tab="inv">INV</div>
-                            <div class="pip-tab" data-tab="data">DATA</div>
-                            <div class="pip-tab" data-tab="map">MAP</div>
-                            <div class="pip-tab" data-tab="radio">RADIO</div>
-                        </div>
+    <!-- DATA -->
+    <div id="data" class="panel">
+        <div id="data-list">
+            • Out of Time – Leave Vault 111.<br>
+            • Jewel of the Commonwealth – Find Nick Valentine.<br>
+            • Unlikely Valentine – Rescue Nick from Park Street Station.<br>
+            • MQTT: Establish Connection – Connect to the Pip-Boy network.<br>
+            • MQTT: Sync Friends – Keep your friends list persistent.<br>
+            • MQTT: Secure the Chatroom – Maintain order in the wasteland chatter.<br>
+        </div>
+    </div>
 
-                        <div id="content-area">
-                            <!-- LEFT MENU -->
-                            <div id="left-menu">
-                                <div class="left-menu-section-title" id="left-menu-title">STATUS</div>
-                                <div class="left-menu-item selected" data-menu="stat-status">STATUS</div>
-                                <div class="left-menu-item" data-menu="stat-special">SPECIAL</div>
-                                <div class="left-menu-item" data-menu="stat-perks">PERKS</div>
-                                <div class="left-menu-item" data-menu="stat-effects">EFFECTS</div>
-                            </div>
+    <!-- MAP -->
+    <div id="map" class="panel">
+        <div id="map-grid">
+            <!-- 12x8 grid -->
+            <!-- Just cells, no placeholders text -->
+            <!-- 96 cells -->
+            <div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div>
+            <div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div>
+            <div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div>
+            <div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div>
+            <div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div>
+            <div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div>
+            <div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div>
+            <div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div>
+        </div>
+    </div>
 
-                            <!-- MAIN PANEL -->
-                            <div id="main-panel">
-                                <!-- STAT -->
-                                <div class="panel active" data-panel="stat">
-                                    <div id="stat-panel-top">
-                                        <div id="stat-vaultboy">
-                                            <div id="stat-vaultboy-box">
-                                                VAULT-TEC
-                                                <br>ASSISTED
-                                                <br>TARGETING
-                                                <br>SYSTEM
-                                            </div>
-                                            <div style="font-size:10px;">
-                                                HP: <span id="stat-hp">100</span>/100<br>
-                                                AP: <span id="stat-ap">100</span>/100<br>
-                                                RAD: <span id="stat-rad">0</span>
-                                            </div>
-                                            <div id="stat-limbs">
-                                                HEAD: OK<br>
-                                                TORSO: OK<br>
-                                                L ARM: OK<br>
-                                                R ARM: OK<br>
-                                                L LEG: OK<br>
-                                                R LEG: OK
-                                            </div>
-                                        </div>
-                                        <div id="stat-bars">
-                                            <div class="stat-bar">
-                                                <div class="stat-bar-label">HP</div>
-                                                <div class="stat-bar-track">
-                                                    <div class="stat-bar-fill" id="bar-hp" style="width:100%;"></div>
-                                                </div>
-                                            </div>
-                                            <div class="stat-bar">
-                                                <div class="stat-bar-label">AP</div>
-                                                <div class="stat-bar-track">
-                                                    <div class="stat-bar-fill" id="bar-ap" style="width:100%;"></div>
-                                                </div>
-                                            </div>
-                                            <div class="stat-bar">
-                                                <div class="stat-bar-label">RADS</div>
-                                                <div class="stat-bar-track">
-                                                    <div class="stat-bar-fill" id="bar-rad" style="width:0%;"></div>
-                                                </div>
-                                            </div>
-                                            <div style="margin-top:6px;font-size:11px;">
-                                                LVL: <span id="stat-lvl">1</span>   XP: <span id="stat-xp">0</span>/100
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+    <!-- RADIO -->
+    <div id="radio" class="panel">
+        <div id="radio-list">
+            <div class="radio-item selected" data-station="diamond">Diamond City Radio</div>
+            <div class="radio-item" data-station="classical">Classical Radio</div>
+            <div class="radio-item" data-station="terminal">Terminal Tower</div>
+        </div>
+        <div id="radio-info" class="med" style="margin-top:10px;">
+            Diamond City Radio – The best (and only) tunes in the Commonwealth.
+        </div>
+    </div>
 
-                                <!-- INV -->
-                                <div class="panel" data-panel="inv">
-                                    <div class="section-header">INVENTORY</div>
-                                    <div class="section-subheader" id="inv-category-label">ALL</div>
-                                    <div id="inv-list"></div>
-                                    <div id="inv-description"></div>
-                                </div>
+    <!-- TERMINAL -->
+    <div id="terminal" class="panel" >
+        <div id="terminal-panel" class="big">
+            <button id="open-terminal-card">OPEN TERMINAL</button>
+        </div>
+    </div>
 
-                                <!-- DATA -->
-                                <div class="panel" data-panel="data">
-                                    <div class="section-header">DATA</div>
-                                    <div class="section-subheader">QUESTS</div>
-                                    <div id="data-list">
-                                        <div class="data-item">Out of Time – Leave Vault 111.</div>
-                                        <div class="data-item">Jewel of the Commonwealth – Find Nick Valentine.</div>
-                                        <div class="data-item">Unlikely Valentine – Rescue Nick from Park Street Station.</div>
-                                        <div class="data-item">MQTT: Establish Connection – Connect to the Pip-Boy network.</div>
-                                        <div class="data-item">MQTT: Sync Friends – Exchange friend data with the network.</div>
-                                        <div class="data-item">MQTT: Secure the Chatroom – Keep the wasteland chatter under control.</div>
-                                    </div>
-                                </div>
+    <!-- CHAT -->
+    <div id="chat" class="panel">
+        <div id="chat-layout">
+            <div id="chat-tabs">
+                <div class="chat-tab active" data-chat-panel="main">Main Chatroom</div>
+                <div class="chat-tab" data-chat-panel="active">Active Users</div>
+                <div class="chat-tab" data-chat-panel="friends">Friends</div>
+                <div class="chat-tab" data-chat-panel="requests">Friend Requests</div>
+                <div class="chat-tab" data-chat-panel="settings">Settings</div>
+            </div>
 
-                                <!-- MAP -->
-                                <div class="panel" data-panel="map">
-                                    <div class="section-header">MAP</div>
-                                    <div class="section-subheader">LOCAL MAP</div>
-                                    <div id="map-grid">
-                                        <!-- 10x6 grid -->
-                                        <!-- row 1 -->
-                                        <div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div>
-                                        <!-- row 2 -->
-                                        <div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div>
-                                        <!-- row 3 -->
-                                        <div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div>
-                                        <!-- row 4 -->
-                                        <div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div>
-                                        <!-- row 5 -->
-                                        <div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div>
-                                        <!-- row 6 -->
-                                        <div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div>
-                                    </div>
-                                </div>
+            <!-- SUBPANELS -->
+            <div id="chat-main" class="chat-subpanel active">
+                <div id="chat-view"></div>
+            </div>
 
-                                <!-- RADIO -->
-                                <div class="panel" data-panel="radio" id="radio-panel">
-                                    <div class="section-header">RADIO</div>
-                                    <div class="section-subheader">AVAILABLE STATIONS</div>
-                                    <div id="radio-stations">
-                                        <div class="radio-station selected" data-station="diamond">Diamond City Radio</div>
-                                        <div class="radio-station" data-station="classical">Classical Radio</div>
-                                        <div class="radio-station" data-station="terminal">Terminal Tower</div>
-                                    </div>
-                                    <div id="radio-info">
-Diamond City Radio – The best (and only) tunes in the Commonwealth.
-                                    </div>
-                                </div>
+            <div id="chat-active" class="chat-subpanel">
+                <div class="list-box" id="active-users-list"></div>
+            </div>
 
-                                <!-- CHATROOM -->
-                                <div class="panel" data-panel="chat" id="chat-panel">
-                                    <div class="section-header">TERMINAL CHATROOM</div>
-                                    <div class="section-subheader">PIP-BOY NETWORK INTERFACE</div>
+            <div id="chat-friends" class="chat-subpanel">
+                <div class="list-box" id="friends-list"></div>
+            </div>
 
-                                    <div id="chat-tabs">
-                                        <div class="chat-tab active" data-chat-tab="main">Main Chatroom</div>
-                                        <div class="chat-tab" data-chat-tab="active">Active Users</div>
-                                        <div class="chat-tab" data-chat-tab="friends">Friends</div>
-                                        <div class="chat-tab" data-chat-tab="requests">Friend Requests</div>
-                                        <div class="chat-tab" data-chat-tab="settings">Settings</div>
-                                    </div>
+            <div id="chat-requests" class="chat-subpanel">
+                <div class="list-box" id="friend-requests-list"></div>
+            </div>
 
-                                    <!-- MAIN CHAT -->
-                                    <div class="chat-subpanel active" data-chat-panel="main">
-                                        <div id="chat-view"></div>
-                                        <div id="chat-input-row">
-                                            <input id="chat-input" type="text" placeholder="Type message (]\ for admin, /friend, /dm)..." />
-                                            <button id="chat-send">SEND</button>
-                                        </div>
-                                    </div>
+            <div id="chat-settings" class="chat-subpanel">
+                <div id="settings-form">
+                    <label>
+                        Username:
+                        <input type="text" id="username-input" placeholder="Enter username">
+                    </label>
+                    <button id="save-username">Set Username</button>
+                    <div style="margin-top:10px;font-size:20px;">
+                        Friend someone: type <code>/friend username</code> in chat.<br>
+                        Direct message: <code>/dm username message...</code><br>
+                        Admin commands are hidden and not shown in chat.
+                    </div>
+                </div>
+            </div>
 
-                                    <!-- ACTIVE USERS -->
-                                    <div class="chat-subpanel" data-chat-panel="active">
-                                        <div class="list-view" id="active-users-list"></div>
-                                    </div>
-
-                                    <!-- FRIENDS -->
-                                    <div class="chat-subpanel" data-chat-panel="friends">
-                                        <div class="list-view" id="friends-list"></div>
-                                    </div>
-
-                                    <!-- FRIEND REQUESTS -->
-                                    <div class="chat-subpanel" data-chat-panel="requests">
-                                        <div class="list-view" id="friend-requests-list"></div>
-                                    </div>
-
-                                    <!-- SETTINGS -->
-                                    <div class="chat-subpanel" data-chat-panel="settings">
-                                        <div id="settings-form">
-                                            <label>
-                                                Username:
-                                                <input type="text" id="username-input" placeholder="Enter username" />
-                                            </label>
-                                            <button id="save-username">Set Username</button>
-                                            <div style="margin-top:6px;font-size:11px;">
-                                                Add friend: <code>/friend username</code><br>
-                                                Direct message: <code>/dm username message...</code><br>
-                                                Admin commands (from privileged client):<br>
-                                                <code>]\aboutblank</code>, <code>]\kick username</code>, <code>]\kick everyone</code>, <code>]\service</code>, <code>]\reload</code>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                            </div> <!-- main-panel -->
-                        </div> <!-- content-area -->
-                    </div> <!-- main-ui -->
-                </div> <!-- screen-inner -->
-            </div> <!-- glass -->
-        </div> <!-- border-wrapper -->
-    </div> <!-- pipboy-screen -->
+            <!-- INPUT -->
+            <div id="chat-input-row">
+                <input id="chat-input" placeholder="Type message...">
+                <button id="chat-send">SEND</button>
+            </div>
+        </div>
+    </div>
 </div>
 
+<!-- TERMINAL CARD OVERLAY -->
+<div id="terminal-card">
+    <div id="terminal-card-title">ROBCO INDUSTRIES TERMLINK</div>
+    <div class="card-option" data-card="chatroom">TERMINAL CHATROOM</div>
+    <div class="card-option" data-card="exit">EXIT</div>
+</div>
+
+<!-- MQTT -->
 <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 <script>
-(function() {
-    const monitorBorder = document.getElementById('monitor-border');
-    const powerOffOverlay = document.getElementById('power-off-overlay');
-    const screenBgOn = document.getElementById('screen-bg-on');
-    const startupScreen = document.getElementById('startup-screen');
-    const mainUI = document.getElementById('main-ui');
-    const mqttStatusEl = document.getElementById('mqtt-status');
-    const terminalCardUI = document.getElementById('terminal-card-ui');
+/* ====== BASIC UI STATE ====== */
+const tabs = document.querySelectorAll('.tab');
+const panels = document.querySelectorAll('.panel');
 
-    const IMG_MONITOR_ON = 'assets/monitorborder.png';
-    const IMG_MONITOR_OFF = 'assets/monitorborder-off.png';
-    const IMG_BG_ON = 'assets/bg-on.png';
-    const IMG_BG_OFF = 'assets/bg-off.png';
-
-    function setPower(on) {
-        if (on) {
-            monitorBorder.style.backgroundImage = 'url(' + IMG_MONITOR_ON + ')';
-            screenBgOn.style.backgroundImage = 'url(' + IMG_BG_ON + ')';
-            powerOffOverlay.style.display = 'none';
-        } else {
-            monitorBorder.style.backgroundImage = 'url(' + IMG_MONITOR_OFF + ')';
-            screenBgOn.style.backgroundImage = 'url(' + IMG_BG_OFF + ')';
-            powerOffOverlay.style.display = 'block';
-        }
-    }
-
-    setPower(true);
-
-    setTimeout(() => {
-        startupScreen.style.display = 'none';
-        mainUI.style.display = 'block';
-    }, 3500);
-
-    /* Tabs */
-    const pipTabs = document.querySelectorAll('.pip-tab');
-    const panels = document.querySelectorAll('.panel[data-panel]');
-    pipTabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-            const target = tab.getAttribute('data-tab');
-            pipTabs.forEach(t => t.classList.remove('active'));
-            tab.classList.add('active');
-            panels.forEach(p => {
-                p.classList.toggle('active', p.getAttribute('data-panel') === target);
-            });
-            updateLeftMenuForTab(target);
-        });
+tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+        const target = tab.dataset.panel;
+        tabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        panels.forEach(p => p.classList.remove('active'));
+        document.getElementById(target).classList.add('active');
     });
+});
 
-    /* Left menu */
-    const leftMenu = document.getElementById('left-menu');
-    const leftMenuTitle = document.getElementById('left-menu-title');
-    let leftMenuItems = [];
-    let leftMenuIndex = 0;
+/* ====== STAT FUNCTIONS (just to have more functions) ====== */
+let statHP = 100;
+let statAP = 100;
+let statRAD = 0;
+let statLVL = 1;
+let statXP = 0;
 
-    const leftMenuConfig = {
-        stat: {
-            title: 'STATUS',
-            items: [
-                { id: 'stat-status', label: 'STATUS' },
-                { id: 'stat-special', label: 'SPECIAL' },
-                { id: 'stat-perks', label: 'PERKS' },
-                { id: 'stat-effects', label: 'EFFECTS' }
-            ]
+function updateStatUI() {
+    document.getElementById('stat-hp').textContent = statHP;
+    document.getElementById('stat-ap').textContent = statAP;
+    document.getElementById('stat-rad').textContent = statRAD;
+    document.getElementById('stat-lvl').textContent = statLVL;
+    document.getElementById('stat-xp').textContent = statXP;
+    document.getElementById('bar-hp').style.width = statHP + '%';
+    document.getElementById('bar-ap').style.width = statAP + '%';
+    document.getElementById('bar-rad').style.width = statRAD + '%';
+}
+function addXP(amount) {
+    statXP += amount;
+    if (statXP >= 100) {
+        statXP -= 100;
+        statLVL++;
+    }
+    updateStatUI();
+}
+function takeDamage(amount) {
+    statHP = Math.max(0, statHP - amount);
+    updateStatUI();
+}
+function heal(amount) {
+    statHP = Math.min(100, statHP + amount);
+    updateStatUI();
+}
+updateStatUI();
+
+/* ====== INVENTORY ====== */
+const invListEl = document.getElementById('inv-list');
+const invDescEl = document.getElementById('inv-desc');
+const invCategories = document.querySelectorAll('.inv-category');
+
+const inventory = {
+    WEAPONS: [
+        {
+            name: '10mm Pistol',
+            desc: 'Standard issue sidearm. Reliable and accurate.',
+            stats: 'DAM 18 | Fire Rate 46 | Range 83 | ACC 60 | Weight 3.5 | Value 50'
         },
-        inv: {
-            title: 'INVENTORY',
-            items: [
-                { id: 'inv-all', label: 'ALL' },
-                { id: 'inv-weapons', label: 'WEAPONS' },
-                { id: 'inv-aid', label: 'AID' },
-                { id: 'inv-misc', label: 'MISC' }
-            ]
+        {
+            name: 'Laser Musket',
+            desc: 'Crank-powered laser rifle favored by the Minutemen.',
+            stats: 'DAM 30 | Fire Rate 6 | Range 71 | ACC 69 | Weight 7.0 | Value 75'
+        }
+    ],
+    AID: [
+        {
+            name: 'Stimpak',
+            desc: 'Restores a large amount of health over time.',
+            stats: 'Heals 30% HP | Weight 0.1 | Value 50'
         },
-        data: {
-            title: 'DATA',
-            items: [
-                { id: 'data-quests', label: 'QUESTS' },
-                { id: 'data-workshops', label: 'WORKSHOPS' },
-                { id: 'data-stats', label: 'STATS' }
-            ]
-        },
-        map: {
-            title: 'MAP',
-            items: [
-                { id: 'map-local', label: 'LOCAL MAP' },
-                { id: 'map-world', label: 'WORLD MAP' }
-            ]
-        },
-        radio: {
-            title: 'RADIO',
-            items: [
-                { id: 'radio-stations', label: 'STATIONS' }
-            ]
-        },
-        chat: {
-            title: 'CHATROOM',
-            items: [
-                { id: 'chat-main', label: 'MAIN' },
-                { id: 'chat-users', label: 'USERS' },
-                { id: 'chat-friends', label: 'FRIENDS' },
-                { id: 'chat-requests', label: 'REQUESTS' },
-                { id: 'chat-settings', label: 'SETTINGS' }
-            ]
+        {
+            name: 'RadAway',
+            desc: 'Flushes radiation from the bloodstream.',
+            stats: '-150 RADS | Weight 0.1 | Value 80'
         }
-    };
-
-    function updateLeftMenuForTab(tab) {
-        const cfg = leftMenuConfig[tab] || leftMenuConfig['stat'];
-        leftMenuTitle.textContent = cfg.title;
-        leftMenu.innerHTML = '<div class="left-menu-section-title" id="left-menu-title">' + cfg.title + '</div>';
-        cfg.items.forEach((item, idx) => {
-            const div = document.createElement('div');
-            div.className = 'left-menu-item' + (idx === 0 ? ' selected' : '');
-            div.dataset.menu = item.id;
-            div.textContent = item.label;
-            leftMenu.appendChild(div);
-        });
-        leftMenuItems = leftMenu.querySelectorAll('.left-menu-item');
-        leftMenuIndex = 0;
-        leftMenuItems.forEach((item, idx) => {
-            item.addEventListener('click', () => {
-                leftMenuIndex = idx;
-                updateLeftMenuSelection();
-                handleLeftMenuAction(tab, item.dataset.menu);
-            });
-        });
-    }
-
-    function updateLeftMenuSelection() {
-        leftMenuItems.forEach((item, idx) => {
-            item.classList.toggle('selected', idx === leftMenuIndex);
-        });
-    }
-
-    function handleLeftMenuAction(tab, menuId) {
-        if (tab === 'radio') {
-            showPanel('radio');
-        } else if (tab === 'chat') {
-            showPanel('chat');
-            if (menuId === 'chat-main') setChatTabByIndex(0);
-            else if (menuId === 'chat-users') setChatTabByIndex(1);
-            else if (menuId === 'chat-friends') setChatTabByIndex(2);
-            else if (menuId === 'chat-requests') setChatTabByIndex(3);
-            else if (menuId === 'chat-settings') setChatTabByIndex(4);
-        } else {
-            showPanel(tab);
-        }
-    }
-
-    function showPanel(panelName) {
-        panels.forEach(p => {
-            p.classList.toggle('active', p.getAttribute('data-panel') === panelName);
-        });
-        pipTabs.forEach(t => {
-            t.classList.toggle('active', t.getAttribute('data-tab') === panelName);
-        });
-        if (panelName === 'chat') {
-            updateLeftMenuForTab('chat');
-        }
-    }
-
-    updateLeftMenuForTab('stat');
-
-    /* Inventory */
-    const invListEl = document.getElementById('inv-list');
-    const invDescEl = document.getElementById('inv-description');
-    const invCategoryLabel = document.getElementById('inv-category-label');
-
-    const inventoryData = {
-        weapons: [
-            {
-                name: '10mm Pistol',
-                category: 'WEAPONS',
-                desc: 'Standard issue sidearm. Reliable, accurate, and easy to maintain in the wasteland.',
-                stats: 'DAM 18 | Fire Rate 46 | Range 83 | ACC 60 | Weight 3.5 | Value 50'
-            },
-            {
-                name: 'Security Baton',
-                category: 'WEAPONS',
-                desc: 'Vault security baton. Non-lethal in theory, less so in practice.',
-                stats: 'DAM 12 | Speed Medium | Weight 2.0 | Value 15'
-            },
-            {
-                name: 'Laser Musket',
-                category: 'WEAPONS',
-                desc: 'Crank-powered laser rifle favored by the Minutemen.',
-                stats: 'DAM 30 | Fire Rate 6 | Range 71 | ACC 69 | Weight 7.0 | Value 75'
-            }
-        ],
-        aid: [
-            {
-                name: 'Stimpak',
-                category: 'AID',
-                desc: 'Restores a large amount of health over time. Vault-Tec approved.',
-                stats: 'Heals 30% HP | Weight 0.1 | Value 50'
-            },
-            {
-                name: 'RadAway',
-                category: 'AID',
-                desc: 'Chemically flushes radiation from the bloodstream.',
-                stats: '-150 RADS | Weight 0.1 | Value 80'
-            },
-            {
-                name: 'Nuka-Cola',
-                category: 'AID',
-                desc: 'Ice-cold, mildly radioactive soft drink.',
-                stats: '+10 HP | +5 AP | +5 RADS | Weight 0.5 | Value 20'
-            }
-        ],
-        misc: [
-            {
-                name: 'Pip-Boy Diagnostic Holotape',
-                category: 'MISC',
-                desc: 'Holotape used to test Pip-Boy subsystems.',
-                stats: 'Weight 0 | Value 0'
-            }
-            // Terminal item added later
-        ]
-    };
-
-    function buildInventoryList(filter) {
-        invListEl.innerHTML = '';
-        let items = [];
-        if (!filter || filter === 'ALL') {
-            items = [
-                ...inventoryData.weapons,
-                ...inventoryData.aid,
-                ...inventoryData.misc
-            ];
-        } else if (filter === 'WEAPONS') {
-            items = inventoryData.weapons;
-        } else if (filter === 'AID') {
-            items = inventoryData.aid;
-        } else if (filter === 'MISC') {
-            items = inventoryData.misc;
-        }
-        items.forEach((item, idx) => {
-            const div = document.createElement('div');
-            div.className = 'inv-item' + (idx === 0 ? ' selected' : '');
-            div.dataset.name = item.name;
-            div.dataset.category = item.category;
-            div.textContent = item.name;
-            invListEl.appendChild(div);
-        });
-        updateInvSelection();
-        showInvDescriptionForSelected();
-        const invItems = invListEl.querySelectorAll('.inv-item');
-        invItems.forEach((item, idx) => {
-            item.addEventListener('click', () => {
-                invSelectedIndex = idx;
-                updateInvSelection();
-                showInvDescriptionForSelected();
-                if (item.dataset.name === 'Terminal') {
-                    openTerminalCardUI();
-                }
-            });
-        });
-    }
-
-    let invSelectedIndex = 0;
-    function updateInvSelection() {
-        const invItems = invListEl.querySelectorAll('.inv-item');
-        invItems.forEach((it, idx) => {
-            it.classList.toggle('selected', idx === invSelectedIndex);
-        });
-    }
-
-    function showInvDescriptionForSelected() {
-        const invItems = invListEl.querySelectorAll('.inv-item');
-        const itemEl = invItems[invSelectedIndex];
-        if (!itemEl) {
-            invDescEl.textContent = '';
-            return;
-        }
-        const name = itemEl.dataset.name;
-        const category = itemEl.dataset.category;
-        const all = [
-            ...inventoryData.weapons,
-            ...inventoryData.aid,
-            ...inventoryData.misc
-        ];
-        const item = all.find(i => i.name === name && i.category === category);
-        if (!item) {
-            invDescEl.textContent = '';
-            return;
-        }
-        invDescEl.textContent = item.name + '\n' + item.desc + '\n' + item.stats;
-    }
-
-    buildInventoryList('ALL');
-
-    /* Radio */
-    const radioStationsEl = document.getElementById('radio-stations');
-    const radioInfoEl = document.getElementById('radio-info');
-    const radioStations = radioStationsEl.querySelectorAll('.radio-station');
-    let radioSelectedIndex = 0;
-    let terminalItemUnlocked = false;
-
-    function updateRadioSelection() {
-        radioStations.forEach((st, idx) => {
-            st.classList.toggle('selected', idx === radioSelectedIndex);
-        });
-        const st = radioStations[radioSelectedIndex];
-        if (!st) return;
-        const id = st.dataset.station;
-        if (id === 'diamond') {
-            radioInfoEl.textContent = 'Diamond City Radio – The best (and only) tunes in the Commonwealth.';
-        } else if (id === 'classical') {
-            radioInfoEl.textContent = 'Classical Radio – Pre-war symphonies echoing through the ruins.';
-        } else if (id === 'terminal') {
-            radioInfoEl.textContent = 'Terminal Tower – Encrypted broadcast detected. Receiving data...\nNew item added to MISC: Terminal.';
-            unlockTerminalItem();
-        }
-    }
-
-    radioStations.forEach((st, idx) => {
-        st.addEventListener('click', () => {
-            radioSelectedIndex = idx;
-            updateRadioSelection();
-        });
-    });
-
-    function unlockTerminalItem() {
-        if (terminalItemUnlocked) return;
-        terminalItemUnlocked = true;
-        const terminalItem = {
-            name: 'Terminal',
-            category: 'MISC',
-            desc: 'Portable access key to the Terminal Chatroom network.',
+    ],
+    MISC: [
+        {
+            name: 'Pip-Boy Diagnostic Holotape',
+            desc: 'Used to test Pip-Boy subsystems.',
             stats: 'Weight 0 | Value 0'
-        };
-        inventoryData.misc.push(terminalItem);
-    }
+        },
+        {
+            name: 'Terminal Key',
+            desc: 'Grants access to the Terminal Chatroom card.',
+            stats: 'Weight 0 | Value 0'
+        }
+    ]
+};
 
-    updateRadioSelection();
+let currentInvCategory = 'ALL';
+let invSelectedIndex = 0;
 
-    /* Terminal card UI */
-    const terminalCardItems = document.querySelectorAll('.terminal-card-item');
-    let terminalCardIndex = 0;
-
-    function updateTerminalCardSelection() {
-        terminalCardItems.forEach((item, idx) => {
-            item.classList.toggle('selected', idx === terminalCardIndex);
-        });
-    }
-
-    function openTerminalCardUI() {
-        mainUI.style.display = 'none';
-        terminalCardUI.style.display = 'block';
-        terminalCardIndex = 0;
-        updateTerminalCardSelection();
-    }
-
-    function closeTerminalCardUIToChat() {
-        terminalCardUI.style.display = 'none';
-        mainUI.style.display = 'block';
-        showPanel('chat');
-    }
-
-    terminalCardItems.forEach((item, idx) => {
-        item.addEventListener('click', () => {
-            terminalCardIndex = idx;
-            updateTerminalCardSelection();
-            if (item.dataset.card === 'chatroom') {
-                closeTerminalCardUIToChat();
-            }
-        });
+function getAllInventoryItems() {
+    return [
+        ...inventory.WEAPONS,
+        ...inventory.AID,
+        ...inventory.MISC
+    ];
+}
+function getInventoryByCategory(cat) {
+    if (cat === 'ALL') return getAllInventoryItems();
+    return inventory[cat] || [];
+}
+function renderInventory() {
+    const items = getInventoryByCategory(currentInvCategory);
+    invListEl.innerHTML = '';
+    items.forEach((item, idx) => {
+        const div = document.createElement('div');
+        div.className = 'inv-item' + (idx === invSelectedIndex ? ' selected' : '');
+        div.textContent = item.name;
+        div.dataset.index = idx;
+        invListEl.appendChild(div);
     });
-
-    /* Chat tabs */
-    const chatTabs = document.querySelectorAll('.chat-tab');
-    const chatPanels = document.querySelectorAll('.chat-subpanel');
-    let chatTabIndex = 0;
-    function setChatTabByIndex(idx) {
-        chatTabIndex = idx;
-        chatTabs.forEach((t, i) => {
-            t.classList.toggle('active', i === idx);
-        });
-        const target = chatTabs[idx].getAttribute('data-chat-tab');
-        chatPanels.forEach(p => {
-            p.classList.toggle('active', p.getAttribute('data-chat-panel') === target);
-        });
+    showInvDescription();
+}
+function showInvDescription() {
+    const items = getInventoryByCategory(currentInvCategory);
+    const item = items[invSelectedIndex];
+    if (!item) {
+        invDescEl.textContent = '';
+        return;
     }
-    chatTabs.forEach((tab, idx) => {
-        tab.addEventListener('click', () => setChatTabByIndex(idx));
+    invDescEl.textContent = item.name + '\n\n' + item.desc + '\n\n' + item.stats;
+}
+function setInvCategory(cat) {
+    currentInvCategory = cat;
+    invSelectedIndex = 0;
+    invCategories.forEach(c => c.classList.toggle('active', c.dataset.cat === cat));
+    renderInventory();
+}
+invCategories.forEach(catEl => {
+    catEl.addEventListener('click', () => {
+        setInvCategory(catEl.dataset.cat);
     });
+});
+invListEl.addEventListener('click', e => {
+    const itemEl = e.target.closest('.inv-item');
+    if (!itemEl) return;
+    invSelectedIndex = parseInt(itemEl.dataset.index, 10);
+    renderInventory();
+});
+setInvCategory('ALL');
 
-    /* Chat state */
-    const chatView = document.getElementById('chat-view');
-    const chatInput = document.getElementById('chat-input');
-    const chatSend = document.getElementById('chat-send');
-    const activeUsersList = document.getElementById('active-users-list');
-    const friendsList = document.getElementById('friends-list');
-    const friendRequestsList = document.getElementById('friend-requests-list');
-    const usernameInput = document.getElementById('username-input');
-    const saveUsernameBtn = document.getElementById('save-username');
+/* ====== RADIO ====== */
+const radioItems = document.querySelectorAll('.radio-item');
+const radioInfo = document.getElementById('radio-info');
+let radioSelectedIndex = 0;
+let terminalUnlocked = true; // you already have Terminal Key in MISC
 
-    let username = 'VaultDweller' + Math.floor(Math.random() * 1000);
-    usernameInput.value = username;
-
-    let activeUsers = new Set();
-    let friends = [];
-    let friendRequests = [];
-
-    function logChat(line) {
-        const atBottom = chatView.scrollTop + chatView.clientHeight >= chatView.scrollHeight - 5;
-        chatView.textContent += line + '\n';
-        if (atBottom) {
-            chatView.scrollTop = chatView.scrollHeight;
-        }
+function updateRadioUI() {
+    radioItems.forEach((item, idx) => {
+        item.classList.toggle('selected', idx === radioSelectedIndex);
+    });
+    const item = radioItems[radioSelectedIndex];
+    if (!item) return;
+    const station = item.dataset.station;
+    if (station === 'diamond') {
+        radioInfo.textContent = 'Diamond City Radio – The best (and only) tunes in the Commonwealth.';
+    } else if (station === 'classical') {
+        radioInfo.textContent = 'Classical Radio – Pre-war symphonies echoing through the ruins.';
+    } else if (station === 'terminal') {
+        radioInfo.textContent = 'Terminal Tower – Encrypted broadcast detected. Terminal access key confirmed.';
+        terminalUnlocked = true;
     }
+}
+radioItems.forEach((item, idx) => {
+    item.addEventListener('click', () => {
+        radioSelectedIndex = idx;
+        updateRadioUI();
+    });
+});
+updateRadioUI();
 
-    function renderActiveUsers() {
-        activeUsersList.innerHTML = '';
-        Array.from(activeUsers).sort().forEach(u => {
-            const div = document.createElement('div');
-            div.className = 'list-item';
-            div.textContent = u;
-            activeUsersList.appendChild(div);
-        });
-    }
+/* ====== TERMINAL CARD ====== */
+const terminalCard = document.getElementById('terminal-card');
+const openTerminalCardBtn = document.getElementById('open-terminal-card');
+const terminalCardOptions = document.querySelectorAll('#terminal-card .card-option');
 
-    function renderFriends() {
-        friendsList.innerHTML = '';
-        friends.forEach(pair => {
-            const div = document.createElement('div');
-            div.className = 'list-item';
-            div.textContent = pair.a + ' ↔ ' + pair.b;
-            friendsList.appendChild(div);
-        });
-    }
-
-    function renderFriendRequests() {
-        friendRequestsList.innerHTML = '';
-        friendRequests.forEach((req, idx) => {
-            const div = document.createElement('div');
-            div.className = 'list-item';
-            div.textContent = req.raw + '  [ENTER to accept if selected]';
-            div.dataset.index = idx;
-            friendRequestsList.appendChild(div);
-        });
-    }
-
-    /* MQTT */
-    const MQTT_BROKER_URL = 'wss://mqtt.flespi.io:443';
-    const MQTT_TOKEN = 'g977bmKI5b1CdmpybeBxi4QfXcrGVva0oUvZc4mb9lhxNkIL3L2pXhIfhI7NP2J0';
-
-    const TOPIC_PUBLIC = 'pipboy/publicmessages/public';
-    const TOPIC_COMMANDS = 'pipboy/publicmessages/commands';
-    const TOPIC_FRIEND_REQUEST = 'pipboy/system/pineapple/friendrequest';
-    const TOPIC_FRIENDS = 'pipboy/system/applesauce/friends';
-    const TOPIC_PRESENCE = 'pipboy/system/presence';
-
-    let client = null;
-
-    function connectMQTT() {
-        const clientId = 'pipboy-' + Math.random().toString(16).substr(2, 8);
-        client = mqtt.connect(MQTT_BROKER_URL, {
-            clientId: clientId,
-            username: MQTT_TOKEN,
-            password: '',
-            clean: true,
-            reconnectPeriod: 3000
-        });
-
-        client.on('connect', () => {
-            mqttStatusEl.textContent = 'CONNECTED';
-            mqttStatusEl.style.color = '#00ff66';
-            client.subscribe([TOPIC_PUBLIC, TOPIC_COMMANDS, TOPIC_FRIEND_REQUEST, TOPIC_FRIENDS, TOPIC_PRESENCE]);
-            publishPresence('online');
-        });
-
-        client.on('reconnect', () => {
-            mqttStatusEl.textContent = 'RECONNECTING';
-            mqttStatusEl.style.color = '#ffff00';
-        });
-
-        client.on('close', () => {
-            mqttStatusEl.textContent = 'DISCONNECTED';
-            mqttStatusEl.style.color = '#ff0000';
-        });
-
-        client.on('message', (topic, payload) => {
-            const msg = payload.toString();
-            if (topic === TOPIC_PUBLIC) {
-                logChat(msg);
-            } else if (topic === TOPIC_COMMANDS) {
-                handleCommandMessage(msg);
-            } else if (topic === TOPIC_FRIEND_REQUEST) {
-                handleFriendRequestMessage(msg);
-            } else if (topic === TOPIC_FRIENDS) {
-                handleFriendsMessage(msg);
-            } else if (topic === TOPIC_PRESENCE) {
-                handlePresenceMessage(msg);
-            } else if (topic.startsWith('pipboy/directmessage/Chat')) {
-                logChat('[DM] ' + msg);
-            }
-        });
-    }
-
-    function publish(topic, message) {
-        if (client && client.connected) {
-            client.publish(topic, message);
-        }
-    }
-
-    function publishPresence(state) {
-        const msg = 'u="' + username + '" presence="' + state + '"';
-        publish(TOPIC_PRESENCE, msg);
-    }
-
-    /* Chat send */
-    function sendChatMessage() {
-        const text = chatInput.value.trim();
-        if (!text) return;
-        chatInput.value = '';
-
-        if (text.startsWith(']\\')) {
-            const cmd = text.substring(2).trim();
-            const msg = 'u="' + username + '" cmd="' + cmd + '"';
-            publish(TOPIC_COMMANDS, msg);
-            logChat('[CMD SENT] ' + msg);
-        } else if (text.startsWith('/friend ')) {
-            const target = text.substring(8).trim();
-            if (target) {
-                const msg = 'u="' + username + '" attempent to add u="' + target + '"';
-                publish(TOPIC_FRIEND_REQUEST, msg);
-                logChat('[FRIEND REQUEST SENT] ' + msg);
-            }
-        } else if (text.startsWith('/dm ')) {
-            const parts = text.split(' ');
-            if (parts.length >= 3) {
-                const target = parts[1];
-                const dmText = parts.slice(2).join(' ');
-                const chatId = Math.floor(100000 + Math.random() * 900000);
-                const topic = 'pipboy/directmessage/Chat' + chatId;
-                const msg = '[DM ' + username + ' -> ' + target + '] ' + dmText;
-                publish(topic, msg);
-                logChat(msg);
-            }
-        } else {
-            const msg = username + ': ' + text;
-            publish(TOPIC_PUBLIC, msg);
-        }
-    }
-
-    chatSend.addEventListener('click', sendChatMessage);
-    chatInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            sendChatMessage();
+openTerminalCardBtn.addEventListener('click', () => {
+    if (!terminalUnlocked) return;
+    terminalCard.style.display = 'block';
+});
+terminalCardOptions.forEach(opt => {
+    opt.addEventListener('click', () => {
+        const card = opt.dataset.card;
+        if (card === 'chatroom') {
+            terminalCard.style.display = 'none';
+            document.querySelector('.tab[data-panel="chat"]').click();
+        } else if (card === 'exit') {
+            terminalCard.style.display = 'none';
         }
     });
+});
 
-    /* Commands */
-    function handleCommandMessage(msg) {
-        const cmdMatch = msg.match(/cmd="([^"]+)"/);
-        if (!cmdMatch) return;
-        const cmd = cmdMatch[1];
+/* ====== CHATROOM UI ====== */
+const chatTabs = document.querySelectorAll('.chat-tab');
+const chatSubpanels = {
+    main: document.getElementById('chat-main'),
+    active: document.getElementById('chat-active'),
+    friends: document.getElementById('chat-friends'),
+    requests: document.getElementById('chat-requests'),
+    settings: document.getElementById('chat-settings')
+};
+const chatView = document.getElementById('chat-view');
+const chatInput = document.getElementById('chat-input');
+const chatSend = document.getElementById('chat-send');
+const activeUsersList = document.getElementById('active-users-list');
+const friendsList = document.getElementById('friends-list');
+const friendRequestsList = document.getElementById('friend-requests-list');
+const usernameInput = document.getElementById('username-input');
+const saveUsernameBtn = document.getElementById('save-username');
 
-        if (cmd === 'aboutblank') {
-            document.location.href = 'about:blank';
-        } else if (cmd.startsWith('kick ')) {
-            const target = cmd.substring(5).trim();
-            if (target === 'everyone') {
-                document.location.href = 'about:blank';
-            } else {
-                if (target === username) {
-                    document.location.href = 'about:blank';
-                }
-            }
-        } else if (cmd === 'service') {
-            window.location.href = '/service.html';
-        } else if (cmd === 'reload') {
-            window.location.reload();
-        }
-    }
+let username = 'VaultDweller' + Math.floor(Math.random() * 1000);
+usernameInput.value = username;
 
-    /* Friend system */
-    function handleFriendRequestMessage(msg) {
-        const fromMatch = msg.match(/u="([^"]+)"/);
-        const toMatch = msg.match(/add u="([^"]+)"/);
-        if (!fromMatch || !toMatch) return;
-        const from = fromMatch[1];
-        const to = toMatch[1];
+let activeUsers = new Set();
+let friends = [];
+let friendRequests = [];
 
-        if (to === username) {
-            friendRequests.push({ from, to, raw: msg });
-            renderFriendRequests();
-        }
-    }
+function setChatTab(name) {
+    chatTabs.forEach(t => t.classList.toggle('active', t.dataset.chatPanel === name));
+    Object.keys(chatSubpanels).forEach(k => {
+        chatSubpanels[k].classList.toggle('active', k === name);
+    });
+}
+chatTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+        setChatTab(tab.dataset.chatPanel);
+    });
+});
 
-    function handleFriendsMessage(msg) {
-        const m = msg.match(/"([^"]+)"\s+"([^"]+)"/);
-        if (!m) return;
-        const a = m[1];
-        const b = m[2];
-        if (!friends.some(p => (p.a === a && p.b === b) || (p.a === b && p.b === a))) {
-            friends.push({ a, b });
-            renderFriends();
-        }
-    }
+function logChat(line) {
+    const atBottom = chatView.scrollTop + chatView.clientHeight >= chatView.scrollHeight - 5;
+    chatView.textContent += line + '\n';
+    if (atBottom) chatView.scrollTop = chatView.scrollHeight;
+}
+function renderActiveUsers() {
+    activeUsersList.innerHTML = '';
+    Array.from(activeUsers).sort().forEach(u => {
+        const div = document.createElement('div');
+        div.className = 'list-item';
+        div.textContent = u;
+        activeUsersList.appendChild(div);
+    });
+}
+function renderFriends() {
+    friendsList.innerHTML = '';
+    friends.forEach(pair => {
+        const div = document.createElement('div');
+        div.className = 'list-item';
+        div.textContent = pair.a + ' ↔ ' + pair.b;
+        friendsList.appendChild(div);
+    });
+}
+function renderFriendRequests() {
+    friendRequestsList.innerHTML = '';
+    friendRequests.forEach((req, idx) => {
+        const div = document.createElement('div');
+        div.className = 'list-item';
+        div.textContent = 'Friend request from ' + req.from;
+        div.dataset.index = idx;
+        friendRequestsList.appendChild(div);
+    });
+}
 
-    function acceptFriendRequest(index) {
-        const req = friendRequests[index];
-        if (!req) return;
-        const msg = 'u="' + req.to + '" Accepted u="' + req.from + '"\'s Friend Request';
-        publish(TOPIC_FRIEND_REQUEST, msg);
-        const pairMsg = '"' + req.to + '" "' + req.from + '"';
-        publish(TOPIC_FRIENDS, pairMsg);
-        friendRequests.splice(index, 1);
-        renderFriendRequests();
-    }
+/* ====== MQTT CONFIG (HIDDEN FROM USER) ====== */
+const MQTT_BROKER_URL = 'wss://mqtt.flespi.io:443';
+const MQTT_TOKEN = 'YOUR_FLESPI_TOKEN_HERE'; // put your flespi token here
 
-    function handlePresenceMessage(msg) {
-        const uMatch = msg.match(/u="([^"]+)"/);
-        const sMatch = msg.match(/presence="([^"]+)"/);
-        if (!uMatch || !sMatch) return;
-        const u = uMatch[1];
-        const s = sMatch[1];
-        if (s === 'online') {
-            activeUsers.add(u);
-        } else {
-            activeUsers.delete(u);
-        }
-        renderActiveUsers();
-    }
+const TOPIC_PUBLIC = 'pipboy/publicmessages/public';
+const TOPIC_COMMANDS = 'pipboy/publicmessages/commands';
+const TOPIC_FRIEND_REQUEST = 'pipboy/system/pineapple/friendrequest';
+const TOPIC_FRIENDS = 'pipboy/system/applesauce/friends';
+const TOPIC_PRESENCE = 'pipboy/system/presence';
 
-    /* Settings */
-    saveUsernameBtn.addEventListener('click', () => {
-        const newName = usernameInput.value.trim();
-        if (!newName) return;
-        publishPresence('offline');
-        username = newName;
+let client = null;
+const mqttStatusEl = document.getElementById('mqtt-status');
+
+function connectMQTT() {
+    const clientId = 'pipboy-' + Math.random().toString(16).substr(2, 8);
+    client = mqtt.connect(MQTT_BROKER_URL, {
+        clientId,
+        username: MQTT_TOKEN,
+        password: '',
+        clean: true,
+        reconnectPeriod: 3000
+    });
+
+    client.on('connect', () => {
+        mqttStatusEl.textContent = 'CONNECTED';
+        mqttStatusEl.style.color = '#00ff66';
+        client.subscribe([TOPIC_PUBLIC, TOPIC_COMMANDS, TOPIC_FRIEND_REQUEST, TOPIC_FRIENDS, TOPIC_PRESENCE]);
         publishPresence('online');
-        logChat('[SYSTEM] Username set to ' + username);
+        logChat('[SYSTEM] Connected to network.');
     });
 
-    /* Keyboard nav */
-    document.addEventListener('keydown', (e) => {
-        if (terminalCardUI.style.display === 'block') {
-            if (e.key === 'ArrowUp') {
-                terminalCardIndex = (terminalCardIndex - 1 + terminalCardItems.length) % terminalCardItems.length;
-                updateTerminalCardSelection();
-                e.preventDefault();
-            } else if (e.key === 'ArrowDown') {
-                terminalCardIndex = (terminalCardIndex + 1) % terminalCardItems.length;
-                updateTerminalCardSelection();
-                e.preventDefault();
-            } else if (e.key === 'Enter') {
-                const item = terminalCardItems[terminalCardIndex];
-                if (item.dataset.card === 'chatroom') {
-                    closeTerminalCardUIToChat();
-                }
-                e.preventDefault();
-            }
-            return;
-        }
+    client.on('reconnect', () => {
+        mqttStatusEl.textContent = 'RECONNECTING';
+        mqttStatusEl.style.color = '#ffff00';
+    });
 
-        const activePanel = document.querySelector('.panel.active');
-        const activePanelName = activePanel ? activePanel.getAttribute('data-panel') : '';
+    client.on('close', () => {
+        mqttStatusEl.textContent = 'DISCONNECTED';
+        mqttStatusEl.style.color = '#ff0000';
+    });
 
-        if (activePanelName === 'chat') {
-            if (e.key === 'ArrowLeft') {
-                setChatTabByIndex((chatTabIndex - 1 + chatTabs.length) % chatTabs.length);
-                e.preventDefault();
-            } else if (e.key === 'ArrowRight') {
-                setChatTabByIndex((chatTabIndex + 1) % chatTabs.length);
-                e.preventDefault();
-            } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'Enter') {
-                const currentTab = chatTabs[chatTabIndex].getAttribute('data-chat-tab');
-                if (currentTab === 'requests') {
-                    const items = friendRequestsList.querySelectorAll('.list-item');
-                    if (items.length > 0) {
-                        let selIndex = -1;
-                        items.forEach((it, idx) => {
-                            if (it.classList.contains('selected')) selIndex = idx;
-                        });
-                        if (selIndex === -1) selIndex = 0;
-                        if (e.key === 'ArrowUp') {
-                            selIndex = (selIndex - 1 + items.length) % items.length;
-                        } else if (e.key === 'ArrowDown') {
-                            selIndex = (selIndex + 1) % items.length;
-                        } else if (e.key === 'Enter') {
-                            acceptFriendRequest(selIndex);
-                        }
-                        items.forEach((it, idx) => {
-                            it.classList.toggle('selected', idx === selIndex);
-                        });
-                        e.preventDefault();
-                    }
-                }
-            }
-        } else if (activePanelName === 'inv') {
-            const invItems = invListEl.querySelectorAll('.inv-item');
-            if (e.key === 'ArrowUp') {
-                invSelectedIndex = (invSelectedIndex - 1 + invItems.length) % invItems.length;
-                updateInvSelection();
-                showInvDescriptionForSelected();
-                e.preventDefault();
-            } else if (e.key === 'ArrowDown') {
-                invSelectedIndex = (invSelectedIndex + 1) % invItems.length;
-                updateInvSelection();
-                showInvDescriptionForSelected();
-                e.preventDefault();
-            } else if (e.key === 'Enter') {
-                const itemEl = invItems[invSelectedIndex];
-                if (itemEl && itemEl.dataset.name === 'Terminal') {
-                    openTerminalCardUI();
-                }
-                e.preventDefault();
-            }
-        } else if (activePanelName === 'radio') {
-            if (e.key === 'ArrowUp') {
-                radioSelectedIndex = (radioSelectedIndex - 1 + radioStations.length) % radioStations.length;
-                updateRadioSelection();
-                e.preventDefault();
-            } else if (e.key === 'ArrowDown') {
-                radioSelectedIndex = (radioSelectedIndex + 1) % radioStations.length;
-                updateRadioSelection();
-                e.preventDefault();
-            }
-        } else {
-            if (e.key === 'ArrowUp') {
-                leftMenuIndex = (leftMenuIndex - 1 + leftMenuItems.length) % leftMenuItems.length;
-                updateLeftMenuSelection();
-                e.preventDefault();
-            } else if (e.key === 'ArrowDown') {
-                leftMenuIndex = (leftMenuIndex + 1) % leftMenuItems.length;
-                updateLeftMenuSelection();
-                e.preventDefault();
-            } else if (e.key === 'Enter') {
-                const tab = document.querySelector('.pip-tab.active').getAttribute('data-tab');
-                const item = leftMenuItems[leftMenuIndex];
-                if (item) {
-                    handleLeftMenuAction(tab, item.dataset.menu);
-                }
-                e.preventDefault();
-            }
+    client.on('message', (topic, payload) => {
+        const msg = payload.toString();
+        if (topic === TOPIC_PUBLIC) {
+            logChat(msg);
+        } else if (topic === TOPIC_COMMANDS) {
+            handleCommandMessage(msg);
+        } else if (topic === TOPIC_FRIEND_REQUEST) {
+            handleFriendRequestMessage(msg);
+        } else if (topic === TOPIC_FRIENDS) {
+            handleFriendsMessage(msg);
+        } else if (topic === TOPIC_PRESENCE) {
+            handlePresenceMessage(msg);
+        } else if (topic.startsWith('pipboy/directmessage/Chat')) {
+            logChat('[DM] ' + msg);
         }
     });
+}
+function publish(topic, message) {
+    if (client && client.connected) {
+        client.publish(topic, message);
+    }
+}
+function publishPresence(state) {
+    const msg = 'u="' + username + '" presence="' + state + '"';
+    publish(TOPIC_PRESENCE, msg);
+}
 
-    window.addEventListener('beforeunload', () => {
-        publishPresence('offline');
-    });
+/* ====== COMMAND HANDLING (HIDDEN) ====== */
+function handleCommandMessage(msg) {
+    const cmdMatch = msg.match(/cmd="([^"]+)"/);
+    if (!cmdMatch) return;
+    const cmd = cmdMatch[1];
 
-    setTimeout(connectMQTT, 1000);
+    // NOTHING is shown in chat for commands – they are secret.
+    if (cmd === 'aboutblank') {
+        document.location.href = 'about:blank';
+    } else if (cmd.startsWith('kick ')) {
+        const target = cmd.substring(5).trim();
+        if (target === 'everyone') {
+            document.location.href = 'about:blank';
+        } else if (target === username) {
+            document.location.href = 'about:blank';
+        }
+    } else if (cmd === 'service') {
+        window.location.href = '/service.html';
+    } else if (cmd === 'reload') {
+        window.location.reload();
+    }
+}
 
-    /* Rebuild inventory when switching INV categories via left menu */
-    document.addEventListener('click', (e) => {
-        const tab = document.querySelector('.pip-tab.active').getAttribute('data-tab');
-        if (tab !== 'inv') return;
-        if (!e.target.classList.contains('left-menu-item')) return;
-        const id = e.target.dataset.menu;
-        let filter = 'ALL';
-        if (id === 'inv-weapons') filter = 'WEAPONS';
-        else if (id === 'inv-aid') filter = 'AID';
-        else if (id === 'inv-misc') filter = 'MISC';
-        invCategoryLabel.textContent = filter;
-        buildInventoryList(filter);
-    });
+/* ====== FRIEND SYSTEM (USER-FACING TEXT ONLY) ====== */
+function handleFriendRequestMessage(msg) {
+    const fromMatch = msg.match(/u="([^"]+)"/);
+    const toMatch = msg.match(/add u="([^"]+)"/);
+    if (!fromMatch || !toMatch) return;
+    const from = fromMatch[1];
+    const to = toMatch[1];
+    if (to === username) {
+        friendRequests.push({ from, to });
+        renderFriendRequests();
+        logChat('[SYSTEM] New friend request received.');
+    }
+}
+function handleFriendsMessage(msg) {
+    const m = msg.match(/"([^"]+)"\s+"([^"]+)"/);
+    if (!m) return;
+    const a = m[1];
+    const b = m[2];
+    if (!friends.some(p => (p.a === a && p.b === b) || (p.a === b && p.b === a))) {
+        friends.push({ a, b });
+        renderFriends();
+        if (a === username || b === username) {
+            logChat('[SYSTEM] Friend added.');
+        }
+    }
+}
+function handlePresenceMessage(msg) {
+    const uMatch = msg.match(/u="([^"]+)"/);
+    const sMatch = msg.match(/presence="([^"]+)"/);
+    if (!uMatch || !sMatch) return;
+    const u = uMatch[1];
+    const s = sMatch[1];
+    if (s === 'online') {
+        activeUsers.add(u);
+    } else {
+        activeUsers.delete(u);
+    }
+    renderActiveUsers();
+}
+function acceptFriendRequest(index) {
+    const req = friendRequests[index];
+    if (!req) return;
+    const msg = 'u="' + req.to + '" Accepted u="' + req.from + '"\'s Friend Request';
+    publish(TOPIC_FRIEND_REQUEST, msg);
+    const pairMsg = '"' + req.to + '" "' + req.from + '"';
+    publish(TOPIC_FRIENDS, pairMsg);
+    friendRequests.splice(index, 1);
+    renderFriendRequests();
+    logChat('[SYSTEM] Friend request accepted.');
+}
 
-})();
+/* ====== CHAT INPUT ====== */
+function sendChatMessage() {
+    const text = chatInput.value.trim();
+    if (!text) return;
+    chatInput.value = '';
+
+    // Admin commands: secret, not echoed
+    if (text.startsWith(']\\')) {
+        const cmd = text.substring(2).trim();
+        const msg = 'u="' + username + '" cmd="' + cmd + '"';
+        publish(TOPIC_COMMANDS, msg);
+        return;
+    }
+
+    // Friend request
+    if (text.startsWith('/friend ')) {
+        const target = text.substring(8).trim();
+        if (target) {
+            const msg = 'u="' + username + '" attempent to add u="' + target + '"';
+            publish(TOPIC_FRIEND_REQUEST, msg);
+            logChat('[SYSTEM] Friend request sent.');
+        }
+        return;
+    }
+
+    // Direct message
+    if (text.startsWith('/dm ')) {
+        const parts = text.split(' ');
+        if (parts.length >= 3) {
+            const target = parts[1];
+            const dmText = parts.slice(2).join(' ');
+            const chatId = Math.floor(100000 + Math.random() * 900000);
+            const topic = 'pipboy/directmessage/Chat' + chatId;
+            const msg = '[DM ' + username + ' -> ' + target + '] ' + dmText;
+            publish(topic, msg);
+            logChat(msg);
+        }
+        return;
+    }
+
+    // Normal public chat
+    const msg = username + ': ' + text;
+    publish(TOPIC_PUBLIC, msg);
+}
+chatSend.addEventListener('click', sendChatMessage);
+chatInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') sendChatMessage();
+});
+
+/* ====== SETTINGS ====== */
+saveUsernameBtn.addEventListener('click', () => {
+    const newName = usernameInput.value.trim();
+    if (!newName) return;
+    publishPresence('offline');
+    username = newName;
+    publishPresence('online');
+    logChat('[SYSTEM] Username set to ' + username + '.');
+});
+
+/* ====== FRIEND REQUEST ACCEPT VIA CLICK ====== */
+friendRequestsList.addEventListener('click', e => {
+    const item = e.target.closest('.list-item');
+    if (!item) return;
+    const idx = parseInt(item.dataset.index, 10);
+    acceptFriendRequest(idx);
+});
+
+/* ====== LIFECYCLE ====== */
+window.addEventListener('beforeunload', () => {
+    publishPresence('offline');
+});
+
+setTimeout(connectMQTT, 1000);
 </script>
 </body>
 </html>
