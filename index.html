@@ -2,49 +2,59 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Pip-Boy 3000 Mk IV – MQTT Chat</title>
+<title>Pip-Boy 3000 Mk IV – MQTT Chatroom</title>
 <style>
-:root {
-    /* TUNE THESE to line the green screen up with your monitorborder image */
-    --screen-left: 120px;
-    --screen-top: 70px;
-    --screen-width: 720px;
-    --screen-height: 420px;
-}
-
 html, body {
     margin: 0;
     padding: 0;
-    background: #000;
+    width: 100%;
     height: 100%;
+    background: #000;
     overflow: hidden;
     font-family: "Courier New", monospace;
     color: #00ff66;
 }
 
-body {
+/* Fullscreen shell */
+#root {
+    position: fixed;
+    inset: 0;
     display: flex;
     align-items: center;
     justify-content: center;
+    background: #000;
 }
 
-/* Outer shell sized to your monitor border image */
-#pipboy-shell {
+/* 1280x720 canvas */
+#pipboy-screen {
     position: relative;
-    width: 960px;
-    height: 540px;
+    width: 1280px;
+    height: 720px;
+    background: #000;
+    overflow: hidden;
 }
 
-/* Monitor border image */
+/* Proportionally scaled border: 930x700 -> 956x720 */
+#border-wrapper {
+    position: absolute;
+    width: 956px;
+    height: 720px;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+}
+
+/* Border image */
 #monitor-border {
     position: absolute;
     inset: 0;
-    background-size: cover;
+    background-size: 100% 100%;
     background-position: center;
+    background-repeat: no-repeat;
     pointer-events: none;
 }
 
-/* Power off overlay */
+/* Power-off overlay */
 #power-off-overlay {
     position: absolute;
     inset: 0;
@@ -52,62 +62,80 @@ body {
     display: none;
 }
 
-/* Screen area aligned inside the border */
-#screen {
+/* Glass area (scaled from 553x335 at 93,82 -> 568x344 at 95,84 inside 956x720) */
+#glass {
     position: absolute;
-    left: var(--screen-left);
-    top: var(--screen-top);
-    width: var(--screen-width);
-    height: var(--screen-height);
+    left: 95px;
+    top: 84px;
+    width: 568px;
+    height: 344px;
     background: #001900;
     overflow: hidden;
     color: #00ff66;
     text-shadow: 0 0 4px #00ff66;
+    box-shadow:
+        0 0 25px rgba(0, 255, 102, 0.4),
+        inset 0 0 40px rgba(0, 0, 0, 0.9);
+    border-radius: 12px;
 }
 
-/* BG overlay (scanlines texture) */
+/* CRT curvature */
+#glass::before {
+    content: "";
+    position: absolute;
+    inset: -20%;
+    background:
+        radial-gradient(circle at 50% 0%, rgba(255,255,255,0.08), transparent 60%),
+        radial-gradient(circle at 0% 50%, rgba(255,255,255,0.05), transparent 55%),
+        radial-gradient(circle at 100% 50%, rgba(255,255,255,0.05), transparent 55%);
+    mix-blend-mode: screen;
+    pointer-events: none;
+}
+
+/* Scanline texture */
 #screen-bg-on {
     position: absolute;
     inset: 0;
     background-size: cover;
     background-position: center;
     opacity: 0.25;
-    pointer-events: none;
     mix-blend-mode: screen;
+    pointer-events: none;
 }
 
 /* Inner frame */
 #screen-inner {
     position: absolute;
-    inset: 8px;
+    inset: 6px;
     border: 2px solid #00ff66;
-    padding: 6px;
+    padding: 4px;
     box-sizing: border-box;
-    animation: flicker 1.5s infinite;
+    animation: flicker 1.6s infinite;
+    overflow: hidden;
 }
 
 /* Flicker */
 @keyframes flicker {
-    0% { opacity: 0.9; }
+    0% { opacity: 0.95; }
     5% { opacity: 0.7; }
-    10% { opacity: 0.95; }
+    10% { opacity: 0.98; }
     15% { opacity: 0.6; }
-    20% { opacity: 0.9; }
+    20% { opacity: 0.95; }
     25% { opacity: 0.8; }
-    30% { opacity: 0.95; }
+    30% { opacity: 0.99; }
     35% { opacity: 0.7; }
-    40% { opacity: 0.9; }
-    100% { opacity: 0.9; }
+    40% { opacity: 0.95; }
+    100% { opacity: 0.95; }
 }
 
-/* Scanline */
+/* Scanline bar */
 .scanline {
     position: absolute;
     left: 0;
     right: 0;
     height: 2px;
-    background: linear-gradient(to bottom, rgba(0,255,102,0.3), transparent);
-    animation: scan 2s linear infinite;
+    background: linear-gradient(to bottom, rgba(0,255,102,0.4), transparent);
+    animation: scan 2.2s linear infinite;
     pointer-events: none;
 }
 
@@ -116,10 +144,10 @@ body {
     100% { top: 100%; }
 }
 
-/* Glow pulse for selected elements */
+/* Glow pulse */
 @keyframes glowPulse {
     0% { box-shadow: 0 0 4px #00ff66; }
-    50% { box-shadow: 0 0 10px #00ff66; }
+    50% { box-shadow: 0 0 12px #00ff66; }
     100% { box-shadow: 0 0 4px #00ff66; }
 }
 
@@ -127,9 +155,9 @@ body {
 #startup-screen {
     position: absolute;
     inset: 0;
-    padding: 10px;
+    padding: 6px;
     box-sizing: border-box;
-    font-size: 14px;
+    font-size: 13px;
     line-height: 1.4;
     white-space: pre;
 }
@@ -139,14 +167,15 @@ body {
     position: absolute;
     inset: 0;
     display: none;
+    font-size: 13px; /* hybrid scale */
 }
 
 /* Top bar */
 #top-bar {
     display: flex;
     justify-content: space-between;
-    font-size: 12px;
-    margin-bottom: 4px;
+    font-size: 11px;
+    margin-bottom: 3px;
 }
 
 #top-bar .section-title {
@@ -154,19 +183,19 @@ body {
     letter-spacing: 2px;
 }
 
-/* Top tabs (STAT, INV, DATA, MAP, RADIO) */
+/* Tabs STAT/INV/DATA/MAP/RADIO */
 #pip-tabs {
     display: flex;
-    gap: 4px;
-    margin-bottom: 4px;
-    font-size: 12px;
+    gap: 3px;
+    margin-bottom: 3px;
+    font-size: 11px;
 }
 
 .pip-tab {
-    padding: 2px 8px;
+    padding: 2px 7px;
     border: 1px solid #00ff66;
     cursor: pointer;
-    transition: background 0.15s, color 0.15s, transform 0.1s;
+    transition: background 0.12s, color 0.12s, transform 0.08s;
 }
 
 .pip-tab:hover {
@@ -184,22 +213,22 @@ body {
     position: absolute;
     left: 0;
     right: 0;
-    top: 32px;
+    top: 30px;
     bottom: 0;
     display: flex;
 }
 
-/* Left category column */
+/* Left menu */
 #left-menu {
-    width: 140px;
+    width: 130px;
     border-right: 1px solid #00ff66;
-    padding-right: 4px;
+    padding-right: 3px;
     box-sizing: border-box;
-    font-size: 12px;
+    font-size: 11px;
 }
 
 .left-menu-section-title {
-    font-size: 11px;
+    font-size: 10px;
     margin-bottom: 2px;
     opacity: 0.8;
 }
@@ -207,7 +236,7 @@ body {
 .left-menu-item {
     padding: 2px 2px;
     cursor: pointer;
-    transition: background 0.15s, color 0.15s;
+    transition: background 0.12s, color 0.12s;
 }
 
 .left-menu-item.selected {
@@ -218,7 +247,7 @@ body {
 /* Main panel */
 #main-panel {
     flex: 1;
-    padding-left: 6px;
+    padding-left: 5px;
     box-sizing: border-box;
     font-size: 12px;
     overflow: hidden;
@@ -237,7 +266,7 @@ body {
     flex-direction: column;
 }
 
-/* STAT panel layout */
+/* STAT panel */
 #stat-panel-top {
     display: flex;
     flex: 1;
@@ -252,17 +281,17 @@ body {
 
 #stat-vaultboy-box {
     width: 100%;
-    height: 140px;
+    height: 135px;
     border: 1px solid #00ff66;
     margin-bottom: 4px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 10px;
+    font-size: 9px;
 }
 
 #stat-limbs {
-    font-size: 10px;
+    font-size: 9px;
     margin-top: 4px;
 }
 
@@ -277,7 +306,7 @@ body {
 }
 
 .stat-bar-label {
-    font-size: 11px;
+    font-size: 10px;
     margin-bottom: 1px;
 }
 
@@ -297,7 +326,7 @@ body {
     background: #00ff66;
 }
 
-/* INV / DATA / MAP / RADIO generic content */
+/* Section headers */
 .section-header {
     font-size: 12px;
     margin-bottom: 2px;
@@ -309,7 +338,7 @@ body {
     margin-bottom: 4px;
 }
 
-/* Inventory list */
+/* Inventory */
 #inv-list {
     flex: 1;
     border: 1px solid #00ff66;
@@ -321,7 +350,7 @@ body {
 .inv-item {
     padding: 1px 2px;
     cursor: pointer;
-    transition: background 0.15s, color 0.15s;
+    transition: background 0.12s, color 0.12s;
 }
 
 .inv-item.selected {
@@ -329,16 +358,16 @@ body {
     color: #001900;
 }
 
-/* Item description */
 #inv-description {
     margin-top: 4px;
     border: 1px solid #00ff66;
     padding: 2px;
     box-sizing: border-box;
     min-height: 40px;
+    white-space: pre-wrap;
 }
 
-/* Data / quests */
+/* Data */
 #data-list {
     flex: 1;
     border: 1px solid #00ff66;
@@ -368,7 +397,7 @@ body {
     background: #001500;
 }
 
-/* RADIO panel */
+/* Radio */
 #radio-stations {
     flex: 1;
     border: 1px solid #00ff66;
@@ -380,7 +409,7 @@ body {
 .radio-station {
     padding: 1px 2px;
     cursor: pointer;
-    transition: background 0.15s, color 0.15s;
+    transition: background 0.12s, color 0.12s;
 }
 
 .radio-station.selected {
@@ -394,9 +423,10 @@ body {
     padding: 2px;
     box-sizing: border-box;
     min-height: 40px;
+    white-space: pre-wrap;
 }
 
-/* Terminal card overlay (full-screen inside Pip-Boy) */
+/* Terminal card overlay */
 #terminal-card-ui {
     position: absolute;
     inset: 0;
@@ -405,6 +435,7 @@ body {
     padding: 10px;
     box-sizing: border-box;
     text-align: center;
+    font-size: 13px;
 }
 
 #terminal-card-title {
@@ -423,7 +454,7 @@ body {
     border: 1px solid #00ff66;
     margin-bottom: 4px;
     cursor: pointer;
-    transition: background 0.15s, color 0.15s, transform 0.1s;
+    transition: background 0.12s, color 0.12s, transform 0.08s;
 }
 
 .terminal-card-item:hover {
@@ -436,7 +467,7 @@ body {
     animation: glowPulse 1.2s infinite;
 }
 
-/* Chatroom panel */
+/* Chatroom */
 #chat-panel {
     font-size: 12px;
 }
@@ -452,7 +483,7 @@ body {
     border: 1px solid #00ff66;
     cursor: pointer;
     font-size: 11px;
-    transition: background 0.15s, color 0.15s;
+    transition: background 0.12s, color 0.12s;
 }
 
 .chat-tab.active {
@@ -471,7 +502,7 @@ body {
     flex-direction: column;
 }
 
-/* Main chat view */
+/* Main chat */
 #chat-view {
     flex: 1;
     border: 1px solid #00ff66;
@@ -539,7 +570,7 @@ body {
     font-size: 12px;
     padding: 2px;
     outline: none;
-    width: 200px;
+    width: 220px;
 }
 
 #settings-form button {
@@ -565,16 +596,19 @@ body {
 </style>
 </head>
 <body>
-<div id="pipboy-shell">
-    <div id="monitor-border"></div>
+<div id="root">
+    <div id="pipboy-screen">
+        <div id="border-wrapper">
+            <div id="monitor-border"></div>
+            <div id="power-off-overlay"></div>
 
-    <div id="screen">
-        <div id="screen-bg-on"></div>
-        <div id="screen-inner">
-            <div class="scanline"></div>
+            <div id="glass">
+                <div id="screen-bg-on"></div>
+                <div id="screen-inner">
+                    <div class="scanline"></div>
 
-            <!-- STARTUP -->
-            <div id="startup-screen">
+                    <!-- STARTUP -->
+                    <div id="startup-screen">
 *****PIP-OS(R) V7.1.0.8*****
 COPYRIGHT 2075 ROBCO(R)
 LOADER V1.1
@@ -583,222 +617,226 @@ EXEC VERSION 41.10
 38911 BYTES FREE
 NO HOLOTAPE FOUND
 LOAD ROM(1): DEITRIX 303
-            </div>
-
-            <!-- TERMINAL CARD OVERLAY -->
-            <div id="terminal-card-ui">
-                <div id="terminal-card-title">ROBCO INDUSTRIES (TM) TERMLINK</div>
-                <div>SELECT A CARD</div>
-                <div id="terminal-card-list">
-                    <div class="terminal-card-item selected" data-card="chatroom">TERMINAL CHATROOM</div>
-                </div>
-                <div style="margin-top:8px;font-size:11px;">
-                    Use ↑/↓ to select, ENTER or click to load.
-                </div>
-            </div>
-
-            <!-- MAIN UI -->
-            <div id="main-ui">
-                <div id="top-bar">
-                    <div class="section-title">PIP-BOY 3000 MK IV</div>
-                    <div>STATUS: <span id="mqtt-status">DISCONNECTED</span></div>
-                </div>
-
-                <div id="pip-tabs">
-                    <div class="pip-tab active" data-tab="stat">STAT</div>
-                    <div class="pip-tab" data-tab="inv">INV</div>
-                    <div class="pip-tab" data-tab="data">DATA</div>
-                    <div class="pip-tab" data-tab="map">MAP</div>
-                    <div class="pip-tab" data-tab="radio">RADIO</div>
-                </div>
-
-                <div id="content-area">
-                    <!-- LEFT CATEGORY COLUMN -->
-                    <div id="left-menu">
-                        <div class="left-menu-section-title" id="left-menu-title">STATUS</div>
-                        <div class="left-menu-item selected" data-menu="stat-status">STATUS</div>
-                        <div class="left-menu-item" data-menu="stat-special">SPECIAL</div>
-                        <div class="left-menu-item" data-menu="stat-perks">PERKS</div>
-                        <div class="left-menu-item" data-menu="stat-effects">EFFECTS</div>
                     </div>
 
-                    <!-- MAIN PANEL -->
-                    <div id="main-panel">
-                        <!-- STAT PANEL -->
-                        <div class="panel active" data-panel="stat">
-                            <div id="stat-panel-top">
-                                <div id="stat-vaultboy">
-                                    <div id="stat-vaultboy-box">
-                                        VAULT-TEC
-                                        <br>ASSISTED
-                                        <br>TARGETING
-                                        <br>SYSTEM
-                                    </div>
-                                    <div style="font-size:10px;">
-                                        HP: <span id="stat-hp">100</span>/100<br>
-                                        AP: <span id="stat-ap">100</span>/100<br>
-                                        RAD: <span id="stat-rad">0</span>
-                                    </div>
-                                    <div id="stat-limbs">
-                                        HEAD: OK<br>
-                                        TORSO: OK<br>
-                                        L ARM: OK<br>
-                                        R ARM: OK<br>
-                                        L LEG: OK<br>
-                                        R LEG: OK
-                                    </div>
-                                </div>
-                                <div id="stat-bars">
-                                    <div class="stat-bar">
-                                        <div class="stat-bar-label">HP</div>
-                                        <div class="stat-bar-track">
-                                            <div class="stat-bar-fill" id="bar-hp" style="width:100%;"></div>
+                    <!-- TERMINAL CARD -->
+                    <div id="terminal-card-ui">
+ROBCO INDUSTRIES (TM) TERMLINK
+------------------------------------------------
+SELECT A CARD
+
+                        <div id="terminal-card-list">
+                            <div class="terminal-card-item selected" data-card="chatroom">TERMINAL CHATROOM</div>
+                        </div>
+                        <div style="margin-top:8px;font-size:11px;">
+                            Use ↑/↓ to select, ENTER or click to load.
+                        </div>
+                    </div>
+
+                    <!-- MAIN UI -->
+                    <div id="main-ui">
+                        <div id="top-bar">
+                            <div class="section-title">PIP-BOY 3000 MK IV</div>
+                            <div>STATUS: <span id="mqtt-status">DISCONNECTED</span></div>
+                        </div>
+
+                        <div id="pip-tabs">
+                            <div class="pip-tab active" data-tab="stat">STAT</div>
+                            <div class="pip-tab" data-tab="inv">INV</div>
+                            <div class="pip-tab" data-tab="data">DATA</div>
+                            <div class="pip-tab" data-tab="map">MAP</div>
+                            <div class="pip-tab" data-tab="radio">RADIO</div>
+                        </div>
+
+                        <div id="content-area">
+                            <!-- LEFT MENU -->
+                            <div id="left-menu">
+                                <div class="left-menu-section-title" id="left-menu-title">STATUS</div>
+                                <div class="left-menu-item selected" data-menu="stat-status">STATUS</div>
+                                <div class="left-menu-item" data-menu="stat-special">SPECIAL</div>
+                                <div class="left-menu-item" data-menu="stat-perks">PERKS</div>
+                                <div class="left-menu-item" data-menu="stat-effects">EFFECTS</div>
+                            </div>
+
+                            <!-- MAIN PANEL -->
+                            <div id="main-panel">
+                                <!-- STAT -->
+                                <div class="panel active" data-panel="stat">
+                                    <div id="stat-panel-top">
+                                        <div id="stat-vaultboy">
+                                            <div id="stat-vaultboy-box">
+                                                VAULT-TEC
+                                                <br>ASSISTED
+                                                <br>TARGETING
+                                                <br>SYSTEM
+                                            </div>
+                                            <div style="font-size:10px;">
+                                                HP: <span id="stat-hp">100</span>/100<br>
+                                                AP: <span id="stat-ap">100</span>/100<br>
+                                                RAD: <span id="stat-rad">0</span>
+                                            </div>
+                                            <div id="stat-limbs">
+                                                HEAD: OK<br>
+                                                TORSO: OK<br>
+                                                L ARM: OK<br>
+                                                R ARM: OK<br>
+                                                L LEG: OK<br>
+                                                R LEG: OK
+                                            </div>
+                                        </div>
+                                        <div id="stat-bars">
+                                            <div class="stat-bar">
+                                                <div class="stat-bar-label">HP</div>
+                                                <div class="stat-bar-track">
+                                                    <div class="stat-bar-fill" id="bar-hp" style="width:100%;"></div>
+                                                </div>
+                                            </div>
+                                            <div class="stat-bar">
+                                                <div class="stat-bar-label">AP</div>
+                                                <div class="stat-bar-track">
+                                                    <div class="stat-bar-fill" id="bar-ap" style="width:100%;"></div>
+                                                </div>
+                                            </div>
+                                            <div class="stat-bar">
+                                                <div class="stat-bar-label">RADS</div>
+                                                <div class="stat-bar-track">
+                                                    <div class="stat-bar-fill" id="bar-rad" style="width:0%;"></div>
+                                                </div>
+                                            </div>
+                                            <div style="margin-top:6px;font-size:11px;">
+                                                LVL: <span id="stat-lvl">1</span>   XP: <span id="stat-xp">0</span>/100
+                                            </div>
                                         </div>
                                     </div>
-                                    <div class="stat-bar">
-                                        <div class="stat-bar-label">AP</div>
-                                        <div class="stat-bar-track">
-                                            <div class="stat-bar-fill" id="bar-ap" style="width:100%;"></div>
+                                </div>
+
+                                <!-- INV -->
+                                <div class="panel" data-panel="inv">
+                                    <div class="section-header">INVENTORY</div>
+                                    <div class="section-subheader" id="inv-category-label">ALL</div>
+                                    <div id="inv-list"></div>
+                                    <div id="inv-description"></div>
+                                </div>
+
+                                <!-- DATA -->
+                                <div class="panel" data-panel="data">
+                                    <div class="section-header">DATA</div>
+                                    <div class="section-subheader">QUESTS</div>
+                                    <div id="data-list">
+                                        <div class="data-item">Out of Time – Leave Vault 111.</div>
+                                        <div class="data-item">Jewel of the Commonwealth – Find Nick Valentine.</div>
+                                        <div class="data-item">Unlikely Valentine – Rescue Nick from Park Street Station.</div>
+                                        <div class="data-item">MQTT: Establish Connection – Connect to the Pip-Boy network.</div>
+                                        <div class="data-item">MQTT: Sync Friends – Exchange friend data with the network.</div>
+                                        <div class="data-item">MQTT: Secure the Chatroom – Keep the wasteland chatter under control.</div>
+                                    </div>
+                                </div>
+
+                                <!-- MAP -->
+                                <div class="panel" data-panel="map">
+                                    <div class="section-header">MAP</div>
+                                    <div class="section-subheader">LOCAL MAP</div>
+                                    <div id="map-grid">
+                                        <!-- 10x6 grid -->
+                                        <!-- row 1 -->
+                                        <div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div>
+                                        <!-- row 2 -->
+                                        <div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div>
+                                        <!-- row 3 -->
+                                        <div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div>
+                                        <!-- row 4 -->
+                                        <div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div>
+                                        <!-- row 5 -->
+                                        <div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div>
+                                        <!-- row 6 -->
+                                        <div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div>
+                                    </div>
+                                </div>
+
+                                <!-- RADIO -->
+                                <div class="panel" data-panel="radio" id="radio-panel">
+                                    <div class="section-header">RADIO</div>
+                                    <div class="section-subheader">AVAILABLE STATIONS</div>
+                                    <div id="radio-stations">
+                                        <div class="radio-station selected" data-station="diamond">Diamond City Radio</div>
+                                        <div class="radio-station" data-station="classical">Classical Radio</div>
+                                        <div class="radio-station" data-station="terminal">Terminal Tower</div>
+                                    </div>
+                                    <div id="radio-info">
+Diamond City Radio – The best (and only) tunes in the Commonwealth.
+                                    </div>
+                                </div>
+
+                                <!-- CHATROOM -->
+                                <div class="panel" data-panel="chat" id="chat-panel">
+                                    <div class="section-header">TERMINAL CHATROOM</div>
+                                    <div class="section-subheader">PIP-BOY NETWORK INTERFACE</div>
+
+                                    <div id="chat-tabs">
+                                        <div class="chat-tab active" data-chat-tab="main">Main Chatroom</div>
+                                        <div class="chat-tab" data-chat-tab="active">Active Users</div>
+                                        <div class="chat-tab" data-chat-tab="friends">Friends</div>
+                                        <div class="chat-tab" data-chat-tab="requests">Friend Requests</div>
+                                        <div class="chat-tab" data-chat-tab="settings">Settings</div>
+                                    </div>
+
+                                    <!-- MAIN CHAT -->
+                                    <div class="chat-subpanel active" data-chat-panel="main">
+                                        <div id="chat-view"></div>
+                                        <div id="chat-input-row">
+                                            <input id="chat-input" type="text" placeholder="Type message (]\ for admin, /friend, /dm)..." />
+                                            <button id="chat-send">SEND</button>
                                         </div>
                                     </div>
-                                    <div class="stat-bar">
-                                        <div class="stat-bar-label">RADS</div>
-                                        <div class="stat-bar-track">
-                                            <div class="stat-bar-fill" id="bar-rad" style="width:0%;"></div>
+
+                                    <!-- ACTIVE USERS -->
+                                    <div class="chat-subpanel" data-chat-panel="active">
+                                        <div class="list-view" id="active-users-list"></div>
+                                    </div>
+
+                                    <!-- FRIENDS -->
+                                    <div class="chat-subpanel" data-chat-panel="friends">
+                                        <div class="list-view" id="friends-list"></div>
+                                    </div>
+
+                                    <!-- FRIEND REQUESTS -->
+                                    <div class="chat-subpanel" data-chat-panel="requests">
+                                        <div class="list-view" id="friend-requests-list"></div>
+                                    </div>
+
+                                    <!-- SETTINGS -->
+                                    <div class="chat-subpanel" data-chat-panel="settings">
+                                        <div id="settings-form">
+                                            <label>
+                                                Username:
+                                                <input type="text" id="username-input" placeholder="Enter username" />
+                                            </label>
+                                            <button id="save-username">Set Username</button>
+                                            <div style="margin-top:6px;font-size:11px;">
+                                                Add friend: <code>/friend username</code><br>
+                                                Direct message: <code>/dm username message...</code><br>
+                                                Admin commands (from privileged client):<br>
+                                                <code>]\aboutblank</code>, <code>]\kick username</code>, <code>]\kick everyone</code>, <code>]\service</code>, <code>]\reload</code>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div style="margin-top:6px;font-size:11px;">
-                                        LVL: <span id="stat-lvl">1</span>   XP: <span id="stat-xp">0</span>/100
-                                    </div>
                                 </div>
-                            </div>
-                        </div>
 
-                        <!-- INV PANEL -->
-                        <div class="panel" data-panel="inv">
-                            <div class="section-header">INVENTORY</div>
-                            <div class="section-subheader" id="inv-category-label">ALL</div>
-                            <div id="inv-list">
-                                <!-- Filled by JS -->
-                            </div>
-                            <div id="inv-description"></div>
-                        </div>
-
-                        <!-- DATA PANEL -->
-                        <div class="panel" data-panel="data">
-                            <div class="section-header">DATA</div>
-                            <div class="section-subheader">QUESTS</div>
-                            <div id="data-list">
-                                <div class="data-item">Out of Time – Leave Vault 111.</div>
-                                <div class="data-item">Jewel of the Commonwealth – Find Nick Valentine.</div>
-                                <div class="data-item">Unlikely Valentine – Rescue Nick from Park Street Station.</div>
-                                <div class="data-item">MQTT: Establish Connection – Connect to the Pip-Boy network.</div>
-                                <div class="data-item">MQTT: Sync Friends – Exchange friend data with the network.</div>
-                                <div class="data-item">MQTT: Secure the Chatroom – Keep the wasteland chatter under control.</div>
-                            </div>
-                        </div>
-
-                        <!-- MAP PANEL -->
-                        <div class="panel" data-panel="map">
-                            <div class="section-header">MAP</div>
-                            <div class="section-subheader">LOCAL MAP</div>
-                            <div id="map-grid">
-                                <!-- simple grid cells -->
-                                <div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div>
-                                <div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div>
-                                <div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div>
-                                <div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div>
-                                <div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div>
-                                <div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div><div class="map-cell"></div>
-                            </div>
-                        </div>
-
-                        <!-- RADIO PANEL -->
-                        <div class="panel" data-panel="radio" id="radio-panel">
-                            <div class="section-header">RADIO</div>
-                            <div class="section-subheader">AVAILABLE STATIONS</div>
-                            <div id="radio-stations">
-                                <div class="radio-station selected" data-station="diamond">Diamond City Radio</div>
-                                <div class="radio-station" data-station="classical">Classical Radio</div>
-                                <div class="radio-station" data-station="terminal">Terminal Tower</div>
-                            </div>
-                            <div id="radio-info">
-                                Diamond City Radio – The best (and only) tunes in the Commonwealth.
-                            </div>
-                        </div>
-
-                        <!-- CHATROOM PANEL (opened via Terminal card) -->
-                        <div class="panel" data-panel="chat" id="chat-panel">
-                            <div class="section-header">TERMINAL CHATROOM</div>
-                            <div class="section-subheader">PIP-BOY NETWORK INTERFACE</div>
-
-                            <div id="chat-tabs">
-                                <div class="chat-tab active" data-chat-tab="main">Main Chatroom</div>
-                                <div class="chat-tab" data-chat-tab="active">Active Users</div>
-                                <div class="chat-tab" data-chat-tab="friends">Friends</div>
-                                <div class="chat-tab" data-chat-tab="requests">Friend Requests</div>
-                                <div class="chat-tab" data-chat-tab="settings">Settings</div>
-                            </div>
-
-                            <!-- MAIN CHAT -->
-                            <div class="chat-subpanel active" data-chat-panel="main">
-                                <div id="chat-view"></div>
-                                <div id="chat-input-row">
-                                    <input id="chat-input" type="text" placeholder="Type message (prefix ]\ for admin command, /friend, /dm)..." />
-                                    <button id="chat-send">SEND</button>
-                                </div>
-                            </div>
-
-                            <!-- ACTIVE USERS -->
-                            <div class="chat-subpanel" data-chat-panel="active">
-                                <div class="list-view" id="active-users-list"></div>
-                            </div>
-
-                            <!-- FRIENDS -->
-                            <div class="chat-subpanel" data-chat-panel="friends">
-                                <div class="list-view" id="friends-list"></div>
-                            </div>
-
-                            <!-- FRIEND REQUESTS -->
-                            <div class="chat-subpanel" data-chat-panel="requests">
-                                <div class="list-view" id="friend-requests-list"></div>
-                            </div>
-
-                            <!-- SETTINGS -->
-                            <div class="chat-subpanel" data-chat-panel="settings">
-                                <div id="settings-form">
-                                    <label>
-                                        Username:
-                                        <input type="text" id="username-input" placeholder="Enter username" />
-                                    </label>
-                                    <button id="save-username">Set Username</button>
-                                    <div style="margin-top:6px;font-size:11px;">
-                                        Add friend: <code>/friend username</code><br>
-                                        Direct message: <code>/dm username message...</code><br>
-                                        Admin commands (from a privileged client):<br>
-                                        <code>]\aboutblank</code>, <code>]\kick username</code>, <code>]\kick everyone</code>, <code>]\service</code>, <code>]\reload</code>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                    </div> <!-- main-panel -->
-                </div> <!-- content-area -->
-            </div> <!-- main-ui -->
-        </div> <!-- screen-inner -->
-    </div> <!-- screen -->
-
-    <div id="power-off-overlay"></div>
+                            </div> <!-- main-panel -->
+                        </div> <!-- content-area -->
+                    </div> <!-- main-ui -->
+                </div> <!-- screen-inner -->
+            </div> <!-- glass -->
+        </div> <!-- border-wrapper -->
+    </div> <!-- pipboy-screen -->
 </div>
 
-<!-- MQTT.js -->
 <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 <script>
 (function() {
-    // ---------- VISUAL SETUP ----------
     const monitorBorder = document.getElementById('monitor-border');
-    const screenBgOn = document.getElementById('screen-bg-on');
     const powerOffOverlay = document.getElementById('power-off-overlay');
+    const screenBgOn = document.getElementById('screen-bg-on');
     const startupScreen = document.getElementById('startup-screen');
     const mainUI = document.getElementById('main-ui');
     const mqttStatusEl = document.getElementById('mqtt-status');
@@ -823,13 +861,12 @@ LOAD ROM(1): DEITRIX 303
 
     setPower(true);
 
-    // Startup delay
     setTimeout(() => {
         startupScreen.style.display = 'none';
         mainUI.style.display = 'block';
     }, 3500);
 
-    // ---------- TOP TABS ----------
+    /* Tabs */
     const pipTabs = document.querySelectorAll('.pip-tab');
     const panels = document.querySelectorAll('.panel[data-panel]');
     pipTabs.forEach(tab => {
@@ -844,7 +881,7 @@ LOAD ROM(1): DEITRIX 303
         });
     });
 
-    // ---------- LEFT MENU ----------
+    /* Left menu */
     const leftMenu = document.getElementById('left-menu');
     const leftMenuTitle = document.getElementById('left-menu-title');
     let leftMenuItems = [];
@@ -957,10 +994,9 @@ LOAD ROM(1): DEITRIX 303
         }
     }
 
-    // Initialize left menu for STAT
     updateLeftMenuForTab('stat');
 
-    // ---------- INVENTORY DATA ----------
+    /* Inventory */
     const invListEl = document.getElementById('inv-list');
     const invDescEl = document.getElementById('inv-description');
     const invCategoryLabel = document.getElementById('inv-category-label');
@@ -1013,7 +1049,7 @@ LOAD ROM(1): DEITRIX 303
                 desc: 'Holotape used to test Pip-Boy subsystems.',
                 stats: 'Weight 0 | Value 0'
             }
-            // Terminal item will be added dynamically
+            // Terminal item added later
         ]
     };
 
@@ -1086,10 +1122,9 @@ LOAD ROM(1): DEITRIX 303
         invDescEl.textContent = item.name + '\n' + item.desc + '\n' + item.stats;
     }
 
-    // Initial inventory build
     buildInventoryList('ALL');
 
-    // ---------- RADIO STATIONS ----------
+    /* Radio */
     const radioStationsEl = document.getElementById('radio-stations');
     const radioInfoEl = document.getElementById('radio-info');
     const radioStations = radioStationsEl.querySelectorAll('.radio-station');
@@ -1108,7 +1143,7 @@ LOAD ROM(1): DEITRIX 303
         } else if (id === 'classical') {
             radioInfoEl.textContent = 'Classical Radio – Pre-war symphonies echoing through the ruins.';
         } else if (id === 'terminal') {
-            radioInfoEl.textContent = 'Terminal Tower – Encrypted broadcast detected. Receiving data...';
+            radioInfoEl.textContent = 'Terminal Tower – Encrypted broadcast detected. Receiving data...\nNew item added to MISC: Terminal.';
             unlockTerminalItem();
         }
     }
@@ -1130,12 +1165,11 @@ LOAD ROM(1): DEITRIX 303
             stats: 'Weight 0 | Value 0'
         };
         inventoryData.misc.push(terminalItem);
-        radioInfoEl.textContent += '\nNew item added to MISC: Terminal.';
     }
 
     updateRadioSelection();
 
-    // ---------- TERMINAL CARD UI ----------
+    /* Terminal card UI */
     const terminalCardItems = document.querySelectorAll('.terminal-card-item');
     let terminalCardIndex = 0;
 
@@ -1168,7 +1202,7 @@ LOAD ROM(1): DEITRIX 303
         });
     });
 
-    // ---------- CHATROOM TABS ----------
+    /* Chat tabs */
     const chatTabs = document.querySelectorAll('.chat-tab');
     const chatPanels = document.querySelectorAll('.chat-subpanel');
     let chatTabIndex = 0;
@@ -1186,7 +1220,7 @@ LOAD ROM(1): DEITRIX 303
         tab.addEventListener('click', () => setChatTabByIndex(idx));
     });
 
-    // ---------- CHAT / FRIENDS STATE ----------
+    /* Chat state */
     const chatView = document.getElementById('chat-view');
     const chatInput = document.getElementById('chat-input');
     const chatSend = document.getElementById('chat-send');
@@ -1200,8 +1234,8 @@ LOAD ROM(1): DEITRIX 303
     usernameInput.value = username;
 
     let activeUsers = new Set();
-    let friends = []; // {a,b}
-    let friendRequests = []; // {from,to,raw}
+    let friends = [];
+    let friendRequests = [];
 
     function logChat(line) {
         const atBottom = chatView.scrollTop + chatView.clientHeight >= chatView.scrollHeight - 5;
@@ -1242,7 +1276,7 @@ LOAD ROM(1): DEITRIX 303
         });
     }
 
-    // ---------- MQTT ----------
+    /* MQTT */
     const MQTT_BROKER_URL = 'wss://mqtt.flespi.io:443';
     const MQTT_TOKEN = 'g977bmKI5b1CdmpybeBxi4QfXcrGVva0oUvZc4mb9lhxNkIL3L2pXhIfhI7NP2J0';
 
@@ -1310,13 +1344,12 @@ LOAD ROM(1): DEITRIX 303
         publish(TOPIC_PRESENCE, msg);
     }
 
-    // ---------- PUBLIC CHAT / COMMANDS ----------
+    /* Chat send */
     function sendChatMessage() {
         const text = chatInput.value.trim();
         if (!text) return;
         chatInput.value = '';
 
-        // Admin commands: starts with ]\
         if (text.startsWith(']\\')) {
             const cmd = text.substring(2).trim();
             const msg = 'u="' + username + '" cmd="' + cmd + '"';
@@ -1353,6 +1386,7 @@ LOAD ROM(1): DEITRIX 303
         }
     });
 
+    /* Commands */
     function handleCommandMessage(msg) {
         const cmdMatch = msg.match(/cmd="([^"]+)"/);
         if (!cmdMatch) return;
@@ -1376,7 +1410,7 @@ LOAD ROM(1): DEITRIX 303
         }
     }
 
-    // ---------- FRIEND SYSTEM ----------
+    /* Friend system */
     function handleFriendRequestMessage(msg) {
         const fromMatch = msg.match(/u="([^"]+)"/);
         const toMatch = msg.match(/add u="([^"]+)"/);
@@ -1426,7 +1460,7 @@ LOAD ROM(1): DEITRIX 303
         renderActiveUsers();
     }
 
-    // ---------- SETTINGS ----------
+    /* Settings */
     saveUsernameBtn.addEventListener('click', () => {
         const newName = usernameInput.value.trim();
         if (!newName) return;
@@ -1436,9 +1470,8 @@ LOAD ROM(1): DEITRIX 303
         logChat('[SYSTEM] Username set to ' + username);
     });
 
-    // ---------- KEYBOARD NAV ----------
+    /* Keyboard nav */
     document.addEventListener('keydown', (e) => {
-        // Terminal card overlay active?
         if (terminalCardUI.style.display === 'block') {
             if (e.key === 'ArrowUp') {
                 terminalCardIndex = (terminalCardIndex - 1 + terminalCardItems.length) % terminalCardItems.length;
@@ -1462,7 +1495,6 @@ LOAD ROM(1): DEITRIX 303
         const activePanelName = activePanel ? activePanel.getAttribute('data-panel') : '';
 
         if (activePanelName === 'chat') {
-            // Chatroom tabs
             if (e.key === 'ArrowLeft') {
                 setChatTabByIndex((chatTabIndex - 1 + chatTabs.length) % chatTabs.length);
                 e.preventDefault();
@@ -1494,7 +1526,6 @@ LOAD ROM(1): DEITRIX 303
                 }
             }
         } else if (activePanelName === 'inv') {
-            // Inventory navigation
             const invItems = invListEl.querySelectorAll('.inv-item');
             if (e.key === 'ArrowUp') {
                 invSelectedIndex = (invSelectedIndex - 1 + invItems.length) % invItems.length;
@@ -1514,7 +1545,6 @@ LOAD ROM(1): DEITRIX 303
                 e.preventDefault();
             }
         } else if (activePanelName === 'radio') {
-            // Radio navigation
             if (e.key === 'ArrowUp') {
                 radioSelectedIndex = (radioSelectedIndex - 1 + radioStations.length) % radioStations.length;
                 updateRadioSelection();
@@ -1525,7 +1555,6 @@ LOAD ROM(1): DEITRIX 303
                 e.preventDefault();
             }
         } else {
-            // Left menu navigation
             if (e.key === 'ArrowUp') {
                 leftMenuIndex = (leftMenuIndex - 1 + leftMenuItems.length) % leftMenuItems.length;
                 updateLeftMenuSelection();
@@ -1545,12 +1574,26 @@ LOAD ROM(1): DEITRIX 303
         }
     });
 
-    // ---------- LIFECYCLE ----------
     window.addEventListener('beforeunload', () => {
         publishPresence('offline');
     });
 
     setTimeout(connectMQTT, 1000);
+
+    /* Rebuild inventory when switching INV categories via left menu */
+    document.addEventListener('click', (e) => {
+        const tab = document.querySelector('.pip-tab.active').getAttribute('data-tab');
+        if (tab !== 'inv') return;
+        if (!e.target.classList.contains('left-menu-item')) return;
+        const id = e.target.dataset.menu;
+        let filter = 'ALL';
+        if (id === 'inv-weapons') filter = 'WEAPONS';
+        else if (id === 'inv-aid') filter = 'AID';
+        else if (id === 'inv-misc') filter = 'MISC';
+        invCategoryLabel.textContent = filter;
+        buildInventoryList(filter);
+    });
+
 })();
 </script>
 </body>
